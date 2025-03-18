@@ -1,61 +1,126 @@
 # Draw Things Protobuf Definitions
 
-## Message Types
+## Service Definition
 
-### Core Messages
-- `ImageGenerationRequest`
-- `ImageGenerationSignpostProto`
-  - `TextEncoded`
-  - `ImageEncoded`
-  - `Sampling`
-  - `ImageDecoded`
-  - `SecondPassImageEncoded`
-  - `SecondPassSampling`
-  - `SecondPassImageDecoded`
-  - `FaceRestored`
-  - `ImageUpscaled`
+```protobuf
+service ImageGenerationService {
+  // Echo endpoint for health check
+  rpc Echo(EchoRequest) returns (EchoResponse);
 
-### Google Protobuf Types Used
-- `google.protobuf.Any`
-- `google.protobuf.Duration`
-- `google.protobuf.Empty`
-- `google.protobuf.FieldMask`
-- `google.protobuf.Timestamp`
-- `google.protobuf.Value`
-- `google.protobuf.ListValue`
-- `google.protobuf.Struct`
+  // Check if model files exist
+  rpc FilesExist(FilesExistRequest) returns (FilesExistResponse);
 
-### Wrapper Types
-- `BoolValue`
-- `BytesValue`
-- `DoubleValue`
-- `FloatValue`
-- `Int32Value`
-- `Int64Value`
-- `StringValue`
-- `UInt32Value`
-- `UInt64Value`
+  // Generate images based on parameters
+  rpc GenerateImage(ImageGenerationRequest) returns (ImageGenerationResponse);
 
-## Service Configuration
+  // Upload model files
+  rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+}
+```
 
-### Service Descriptors
-- Uses `ServiceDescriptorProto` for service definitions
-- Implements `MethodDescriptorProto` for method definitions
-- Supports service options via `ServiceOptions`
+## Message Definitions
 
-### Protocol Features
-- Supports Protocol Buffers version 2 and 3
-- Uses binary format for efficient transmission
-- Implements reflection capabilities
-- Supports custom options and extensions
+### Echo Messages
+```protobuf
+message EchoRequest {
+}
 
-### Message Generation
-- Supports automatic code generation
-- Uses Swift Protobuf for message handling
-- Implements efficient binary serialization/deserialization
+message EchoResponse {
+  string message = 1;  // Contains "HELLO"
+}
+```
 
-## Notes
-- The service uses Protocol Buffers for all message serialization
-- Implements standard Google Protobuf message types
-- Supports both binary and text format protocols
-- Uses reflection for runtime type information
+### File Management Messages
+```protobuf
+message FilesExistRequest {
+  repeated string files = 1;  // List of files to check
+}
+
+message FilesExistResponse {
+  repeated string files = 1;   // List of checked files
+  repeated bool exists = 2;    // Existence status for each file
+  repeated string errors = 3;  // Error messages if any
+}
+
+message UploadFileRequest {
+  string filename = 1;      // Target filename
+  bytes chunk_data = 2;     // File data chunk
+}
+
+message UploadFileResponse {
+  bool success = 1;         // Upload success status
+  string message = 2;       // Status message or error
+}
+```
+
+### Image Generation Messages
+```protobuf
+message ImageGenerationRequest {
+  string prompt = 1;              // Generation prompt
+  string negative_prompt = 2;     // Negative prompt
+  int32 width = 3;               // Image width
+  int32 height = 4;              // Image height
+  int32 steps = 5;               // Number of steps
+  float cfg_scale = 6;           // CFG scale
+  int64 seed = 7;               // Random seed
+  string sampler = 8;            // Sampler name
+  bool restore_faces = 9;        // Face restoration
+  bool enable_hr = 10;           // High-res fix
+  float denoising_strength = 11; // Denoising strength
+  int32 batch_size = 12;         // Images per batch
+  int32 batch_count = 13;        // Number of batches
+}
+
+message ImageGenerationResponse {
+  repeated bytes images = 1;           // Generated images
+  repeated string info = 2;            // Generation info
+  repeated SignpostEvent events = 3;   // Progress events
+}
+```
+
+### Progress Tracking
+```protobuf
+message SignpostEvent {
+  string name = 1;
+  int64 timestamp = 2;
+  enum EventType {
+    TEXT_ENCODED = 0;
+    IMAGE_DECODED = 1;
+    IMAGE_ENCODED = 2;
+    SAMPLING = 3;
+    FACE_RESTORED = 4;
+    IMAGE_UPSCALED = 5;
+    SECOND_PASS_IMAGE_DECODED = 6;
+    SECOND_PASS_IMAGE_ENCODED = 7;
+    SECOND_PASS_SAMPLING = 8;
+  }
+  EventType type = 3;
+}
+```
+
+## Implementation Notes
+
+### Message Serialization
+- Uses binary protobuf format for all messages
+- Response messages include error details when needed
+- Empty messages (like EchoRequest) are serialized as empty bytes
+
+### Field Types
+- Uses standard protobuf field types:
+  - `string` for text fields
+  - `bytes` for binary data
+  - `int32`/`int64` for integers
+  - `float` for floating-point numbers
+  - `bool` for boolean values
+  - `repeated` for lists/arrays
+
+### Error Handling
+- Error messages are included in response messages
+- Uses standard gRPC status codes for transport-level errors
+- Each response type includes fields for error reporting
+
+### Testing
+- Messages can be tested using the provided test script
+- Echo endpoint returns a simple string message
+- FilesExist endpoint returns parallel arrays for status
+- Generated code handles serialization/deserialization
