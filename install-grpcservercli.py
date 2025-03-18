@@ -89,7 +89,7 @@ gRPCServerCLI Options:
 
 Advanced Options:
     The --join option accepts a JSON string for proxy configuration:
-    Example: --join '{{"host":"proxy.example.com", "port":7859, "servers":[{{"address":"gpu1.local", "port":7859, "priority":1}}]}}'
+    Example: --join '{{"host":"proxy.example.com", "port":7859, "servers":[{{"address":"gpu1.local", "port":7859, "priority": 1}}]}}'
 
     Required fields for --join:
     - host: The proxy server hostname
@@ -248,315 +248,52 @@ Examples:
                 return Path(path)
             print("Path does not exist. Please try again.")
 
-    def get_latest_release_url(self):
-        """Get the download URL for the latest macOS release"""
-        print("Checking for latest release...")
+    def validate_join_config(self, config_str):
+        """Validate join configuration string"""
         try:
-            # Get the tags page
-            req = urllib.request.Request(self.GITHUB_API_URL, headers={'Accept': 'application/json'})
-            with urllib.request.urlopen(req) as response:
-                tags = json.loads(response.read().decode())
-                if tags:
-                    latest_tag = tags[0]['name']  # First tag is the latest
-                    print(f"Found latest version: {latest_tag}")
-                    return f"https://github.com/drawthingsai/draw-things-community/releases/download/{latest_tag}/{self.BINARY_NAME}-macOS"
-                raise ValueError("No tags found")
-        except Exception as e:
-            print(f"Failed to get latest version: {e}")
-            print("Falling back to hardcoded latest known version...")
-            return f"https://github.com/drawthingsai/draw-things-community/releases/download/{self.FALLBACK_VERSION}/{self.BINARY_NAME}-macOS"
+            config = json.loads(config_str)
+            if not isinstance(config, dict):
+                raise ValueError("Join configuration must be a JSON object")
 
-    def download_grpcserver(self):
-        """Download and install the gRPCServerCLI binary"""
-        print("Downloading gRPCServerCLI...")
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            binary_path = Path(tmp_dir) / self.BINARY_NAME
-            url = self.get_latest_release_url()
+            # Check required fields
+            if not all(field in config for field in ['host', 'port']):
+                raise ValueError("Join configuration must include 'host' and 'port'")
 
-            try:
-                urllib.request.urlretrieve(url, binary_path)
-            except urllib.error.URLError as e:
-                print(f"Failed to download gRPCServerCLI: {e}")
-                sys.exit(1)
+            # Validate host
+            if not isinstance(config['host'], str) or not config['host']:
+                raise ValueError("Host must be a non-empty string")
 
-            try:
-                # Test if we can write to /usr/local/bin
-                if not self.PREFERRED_BIN_DIR.exists():
-                    self.PREFERRED_BIN_DIR.mkdir(parents=True)
+            # Validate port
+            if not isinstance(config['port'], int) or config['port'] < 1:
+                raise ValueError("Port must be a positive integer")
 
-                test_file = self.PREFERRED_BIN_DIR / '.write_test'
-                test_file.touch()
-                test_file.unlink()
+            # Validate servers if present
+            if 'servers' in config:
+                if not isinstance(config['servers'], list):
+                    raise ValueError("Servers must be a list")
+                for server in config['servers']:
+                    if not isinstance(server, dict):
+                        raise ValueError("Each server must be an object")
+                    if not all(field in server for field in ['address', 'port']):
+                        raise ValueError("Each server must have 'address' and 'port'")
+                    if not isinstance(server['address'], str) or not server['address']:
+                        raise ValueError("Server address must be a non-empty string")
+                    if not isinstance(server['port'], int) or server['port'] < 1:
+                        raise ValueError("Server port must be a positive integer")
 
-                bin_dir = self.PREFERRED_BIN_DIR
-            except (OSError, PermissionError):
-                print(f"Cannot write to {self.PREFERRED_BIN_DIR}, using {self.LOCAL_BIN_DIR} instead")
-                bin_dir = self.LOCAL_BIN_DIR
-                bin_dir.mkdir(parents=True, exist_ok=True)
+            return True
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON format")
 
-                # Check if ~/.local/bin is in PATH
-                path = os.environ.get('PATH', '')
-                if str(self.LOCAL_BIN_DIR) not in path:
-                    print(f"\nNOTE: {self.LOCAL_BIN_DIR} is not in your PATH.")
-                    response = input("Would you like to add it to your PATH? (y/N): ")
-                    if response.lower() == 'y':
-                        # Detect shell (zsh is default on modern macOS)
-                        shell_path = os.environ.get('SHELL', '/bin/zsh')
-                        if 'zsh' in shell_path:
-                            rc_file = Path.home() / '.zshrc'
-                        else:
-                            rc_file = Path.home() / '.bash_profile'
-
-                        path_line = f'\nexport PATH="$HOME/.local/bin:$PATH"  # Added by Draw Things installer\n'
-
-                        try:
-                            with open(rc_file, 'a') as f:
-                                f.write(path_line)
-                            print(f"Added {self.LOCAL_BIN_DIR} to PATH in {rc_file}")
-                            print("Please restart your terminal or run:")
-                            print(f"    source {rc_file}")
-                        except Exception as e:
-                            print(f"Failed to modify {rc_file}: {e}")
-                            print("To add it manually, add this line to your shell configuration:")
-                            print(f'    export PATH="{self.LOCAL_BIN_DIR}:$PATH"')
-                    else:
-                        print("\nTo add it manually later, add this line to your shell configuration:")
-                        print(f'    export PATH="{self.LOCAL_BIN_DIR}:$PATH"')
-
-            dest_path = bin_dir / self.BINARY_NAME
-
-            # Check if binary already exists
-            if dest_path.exists():
-                print(f"\nFound existing gRPCServerCLI at {dest_path}")
-                response = input("Would you like to overwrite it? (y/N): ")
-                if response.lower() != 'y':
-                    print("Installation cancelled.")
-                    sys.exit(0)
-
-                # Stop any running services before overwriting
-                service_path = self.AGENTS_DIR / f'{self.SERVICE_NAME}.plist'
-                if service_path.exists():
-                    print("Stopping existing service before updating binary...")
-                    try:
-                        subprocess.run(['launchctl', 'unload', service_path], check=False)
-                        subprocess.run(['launchctl', 'remove', self.SERVICE_NAME], check=False)
-                        time.sleep(1)  # Give the service time to stop
-                    except Exception as e:
-                        print(f"Warning: Failed to stop service: {e}")
-
-                # Stop any running processes
-                try:
-                    subprocess.run(['pkill', '-f', 'gRPCServer'], check=False)
-                    time.sleep(1)  # Give processes time to stop
-                except Exception as e:
-                    print(f"Warning: Failed to stop processes: {e}")
-
-            shutil.move(str(binary_path), dest_path)
-            os.chmod(dest_path, 0o755)
-
-            return dest_path
-
-    def create_launchd_service(self, binary_path):
-        """Create and load the launchd service as a LaunchAgent"""
-        self.AGENTS_DIR.mkdir(parents=True, exist_ok=True)
-        service_path = self.AGENTS_DIR / f'{self.SERVICE_NAME}.plist'
-
-        # Check if service already exists
-        if service_path.exists():
-            print(f"\nFound existing service at {service_path}")
-            response = input("Would you like to update it? (y/N): ")
-            if response.lower() != 'y':
-                print("Service installation cancelled.")
-                return
-
-            # Stop existing service
-            print("Stopping existing service...")
-            try:
-                subprocess.run(['launchctl', 'unload', service_path], check=False)
-                subprocess.run(['launchctl', 'remove', self.SERVICE_NAME], check=False)
-                time.sleep(1)  # Give the service time to stop
-            except Exception as e:
-                print(f"Warning: Failed to stop service: {e}")
-
-        # Build command line arguments list
-        cmd_args = [str(binary_path), str(self.model_path)]
-
-        # Add optional arguments
-        if self.server_args['name'] != self.DEFAULT_NAME:
-            cmd_args.extend(['--name', self.server_args['name']])
-        if self.server_args['port'] != self.DEFAULT_PORT:
-            cmd_args.extend(['--port', str(self.server_args['port'])])
-        if self.server_args['address'] != self.DEFAULT_HOST:
-            cmd_args.extend(['--address', self.server_args['address']])
-        if self.server_args['gpu'] != self.DEFAULT_GPU:
-            cmd_args.extend(['--gpu', str(self.server_args['gpu'])])
-        if self.server_args['datadog_api_key']:
-            cmd_args.extend(['--datadog-api-key', self.server_args['datadog_api_key']])
-        if self.server_args['shared_secret']:
-            cmd_args.extend(['--shared-secret', self.server_args['shared_secret']])
-        if self.server_args['no_tls']:
-            cmd_args.append('--no-tls')
-        if self.server_args['no_response_compression']:
-            cmd_args.append('--no-response-compression')
-        if self.server_args['model_browser']:
-            cmd_args.append('--model-browser')
-        if self.server_args['no_flash_attention']:
-            cmd_args.append('--no-flash-attention')
-        if self.server_args['debug']:
-            cmd_args.append('--debug')
-        if self.server_args['join']:
-            cmd_args.extend(['--join', self.server_args['join']])
-
-        service_config = {
-            'Label': self.SERVICE_NAME,
-            'ProgramArguments': cmd_args,
-            'RunAtLoad': True,
-            'KeepAlive': True
-        }
-
+    def check_port_available(self, port):
+        """Check if a port is available"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
         try:
-            with open(service_path, 'wb') as f:
-                plistlib.dump(service_config, f)
-
-            subprocess.run(['launchctl', 'load', service_path], check=True)
-            print(f"Service installed and started at {service_path}")
-            print("Server configuration:")
-            # Only show non-default values
-            defaults = {
-                'name': self.DEFAULT_NAME,
-                'port': self.DEFAULT_PORT,
-                'address': self.DEFAULT_HOST,
-                'gpu': self.DEFAULT_GPU,
-                'datadog_api_key': None,
-                'shared_secret': None,
-                'no_tls': False,
-                'no_response_compression': False,
-                'model_browser': False,
-                'no_flash_attention': False,
-                'debug': False,
-                'join': None
-            }
-            for key, value in self.server_args.items():
-                if value != defaults[key]:
-                    print(f"  {key}: {value}")
-        except (OSError, subprocess.CalledProcessError) as e:
-            print(f"Failed to create or load service: {e}")
-            sys.exit(1)
-
-    def test_server_running(self):
-        """Test if the gRPCServerCLI is running and accepting connections"""
-        print("\nTesting gRPCServerCLI...")
-
-        # Check if process is running
-        try:
-            result = subprocess.run(['pgrep', 'gRPCServerCLI'], stdout=PIPE, text=True)
-            if not result.stdout.strip():
-                print("ERROR: gRPCServerCLI process not found")
-                return False
-
-            pid = result.stdout.strip()
-            print(f"Found gRPCServerCLI process (PID: {pid})")
-        except subprocess.CalledProcessError as e:
-            print(f"ERROR: Failed to check process: {e}")
-            return False
-
-        # Give the server a moment to start listening
-        time.sleep(1)
-
-        # Test port connection using lsof
-        try:
-            result = subprocess.run(['lsof', '-i', f':{self.server_args["port"]}'],
-                                stdout=PIPE, stderr=PIPE, text=True)
-            if result.returncode == 0 and 'gRPCServe' in result.stdout and 'LISTEN' in result.stdout:
-                print(f"Server is listening on port {self.server_args['port']}")
-                return True
-
-            # If lsof fails or doesn't show the port, try a direct connection test
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            try:
-                sock.connect(('localhost', self.server_args['port']))
-                print(f"Server is accepting connections on port {self.server_args['port']}")
-                return True
-            except (socket.timeout, ConnectionRefusedError):
-                print(f"ERROR: Server is not accepting connections on port {self.server_args['port']}")
-                return False
-            finally:
-                sock.close()
-        except Exception as e:
-            print(f"ERROR: Failed to check port: {e}")
-            return False
-
-    def check_existing_service(self):
-        """Check for any existing Draw Things gRPC services"""
-        print("Checking for existing services...")
-
-        has_existing = False
-
-        # Check for existing service plist files
-        service_patterns = [
-            "com.drawthings.grpcserver*.plist",
-            "com.draw-things.grpcserver*.plist",
-            "*drawthings*grpc*.plist",
-            "*draw-things*grpc*.plist"
-        ]
-
-        existing_services = []
-        for pattern in service_patterns:
-            existing_services.extend(list(self.AGENTS_DIR.glob(pattern)))
-
-        if existing_services:
-            has_existing = True
-            print("\nFound existing service files:")
-            for service in existing_services:
-                print(f"  - {service}")
-
-        # Check for running gRPC processes
-        try:
-            result = subprocess.run(['pgrep', '-fl', 'gRPCServer'], stdout=PIPE, text=True)
-            if result.stdout.strip():
-                has_existing = True
-                print("\nFound running gRPC processes:")
-                for line in result.stdout.strip().split('\n'):
-                    print(f"  - {line}")
-        except subprocess.CalledProcessError:
-            pass
-
-        # Check if default port is in use
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            result = sock.connect_ex(('localhost', self.DEFAULT_PORT))
+            result = sock.connect_ex(('localhost', port))
+            return result != 0
+        finally:
             sock.close()
-
-            if result == 0:
-                has_existing = True
-                print(f"\nPort {self.DEFAULT_PORT} is already in use!")
-                try:
-                    # Try to get more info about what's using the port
-                    lsof = subprocess.run(['lsof', '-i', f':{self.DEFAULT_PORT}'],
-                                       stdout=PIPE, text=True, check=True)
-                    print("\nProcess using the port:")
-                    print(lsof.stdout)
-                except subprocess.CalledProcessError:
-                    pass
-        except Exception:
-            pass
-
-        if has_existing:
-            print("\nFound existing Draw Things gRPC installation!")
-            print("It's recommended to uninstall before proceeding.")
-            response = input("Would you like to uninstall now? (Y/n): ")
-            if response.lower() != 'n':
-                self.uninstall()
-                print("\nContinuing with fresh installation...\n")
-            else:
-                print("\nProceeding without uninstalling...")
-                response = input("Are you sure you want to continue? This might cause issues. (y/N): ")
-                if response.lower() != 'y':
-                    print("Installation cancelled.")
-                    sys.exit(1)
-            print()  # Empty line for readability
 
     def restart_service(self):
         """Restart the gRPCServerCLI service"""
@@ -581,16 +318,6 @@ Examples:
             return default.lower() == 'y'
         response = input(message)
         return response.lower() == 'y' if response else default.lower() == 'y'
-
-    def check_port_available(self, port):
-        """Check if a port is available"""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        try:
-            result = sock.connect_ex(('localhost', port))
-            return result != 0
-        finally:
-            sock.close()
 
     def install(self):
         """Run the installation process"""

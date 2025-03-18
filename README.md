@@ -18,31 +18,31 @@ git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git
 
 ```bash
 # Basic installation with defaults
-./install-grpcservercli.py
+./src/install-grpcservercli.py
 
 # Install with custom model path
-./install-grpcservercli.py -m /path/to/models
+./src/install-grpcservercli.py -m /path/to/models
 
 # Install with custom port and server name
-./install-grpcservercli.py -p 7860 -n "MyServer"
+./src/install-grpcservercli.py -p 7860 -n "MyServer"
 
 # Install with security options
-./install-grpcservercli.py -s "mysecret"
+./src/install-grpcservercli.py -s "mysecret"
 
 # Install with model browser enabled
-./install-grpcservercli.py --model-browser
+./src/install-grpcservercli.py --model-browser
 
 # Install with proxy configuration
-./install-grpcservercli.py --join '{"host":"proxy.local", "port":7859}'
+./src/install-grpcservercli.py --join '{"host":"proxy.local", "port":7859}'
 
 # Restart the service
-./install-grpcservercli.py --restart
+./src/install-grpcservercli.py --restart
 
 # Quiet install with defaults
-./install-grpcservercli.py -q
+./src/install-grpcservercli.py -q
 
 # Uninstall
-./install-grpcservercli.py --uninstall
+./src/install-grpcservercli.py --uninstall
 ```
 
 ## Options
