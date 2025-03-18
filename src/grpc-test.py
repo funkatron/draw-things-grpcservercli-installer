@@ -12,12 +12,16 @@ from pathlib import Path
 from grpc_reflection.v1alpha import reflection_pb2, reflection_pb2_grpc
 from google.protobuf import descriptor_pb2, descriptor_pool
 import json
+import image_generation_pb2
+import image_generation_pb2_grpc
 
 class ImageGenerationStub:
     """Stub for ImageGenerationService."""
 
-    def __init__(self):
-        self.service_name = "ImageGenerationService"
+    def __init__(self, channel):
+        self.service_name = "ImageGenerationService"  # Without package name
+        self._channel = channel
+        self._stub = image_generation_pb2_grpc.ImageGenerationServiceStub(channel)
 
     def get_service_descriptor(self, channel):
         """Get the service descriptor using reflection."""
@@ -60,21 +64,51 @@ class ImageGenerationStub:
 
     def Echo(self, request):
         """Test connection with Echo method."""
-        method = '/ImageGenerationService/Echo'
+        method = '/ImageGenerationService/Echo'  # Direct method path
         return self._channel.unary_unary(
             method,
-            request_serializer=lambda x: b'',  # Empty request
+            request_serializer=lambda x: b'',
             response_deserializer=lambda x: x,
         )(b'')
 
-    def FilesExist(self, request):
+    def FilesExist(self, files):
         """Check if model files exist."""
         method = '/ImageGenerationService/FilesExist'
-        return self._channel.unary_unary(
-            method,
-            request_serializer=lambda x: x.SerializeToString(),
-            response_deserializer=lambda x: x,
-        )(request)
+
+        # Create protobuf request
+        request = image_generation_pb2.FilesExistRequest()
+        request.files.extend(files)
+
+        print(f"\nRequest files: {files}")
+        print(f"Request bytes: {request.SerializeToString()}")
+
+        try:
+            response = self._channel.unary_unary(
+                method,
+                request_serializer=lambda x: x.SerializeToString(),
+                response_deserializer=lambda x: x  # Just return raw bytes
+            )(request)
+
+            print(f"\nRaw response bytes: {response}")
+            try:
+                parsed = image_generation_pb2.FilesExistResponse.FromString(response)
+                print(f"Parsed response: {parsed}")
+                return parsed
+            except Exception as parse_error:
+                print(f"Failed to parse response: {parse_error}")
+                return None
+
+        except grpc.RpcError as e:
+            status_code = e.code()
+            details = e.details()
+            print(f"\nRPC Error:")
+            print(f"  Status code: {status_code}")
+            print(f"  Details: {details}")
+            print(f"  Debug info: {e.debug_error_string()}")
+            raise
+        except Exception as e:
+            print(f"\nUnexpected error: {str(e)}")
+            raise
 
     def GenerateImage(self, request):
         """Generate an image."""
@@ -100,22 +134,21 @@ class ImageGenerationStub:
 
         try:
             # Create a request with a list of files to check
-            request = [
+            files = [
                 "stable-diffusion/model.safetensors",
                 "vae/model.safetensors",
                 "nonexistent-file.txt"
             ]
 
-            # Call the FilesExist method
-            method = channel.unary_unary(
-                f'/{self.service_name}/FilesExist',
-                request_serializer=lambda x: json.dumps(x).encode('utf-8'),
-                response_deserializer=lambda x: json.loads(x.decode('utf-8')) if x else None
-            )
-
-            print("\nSending request:", json.dumps(request, indent=2))
-            response = method(request)
-            print("\nFilesExist response:", json.dumps(response, indent=2) if response else "No response")
+            response = self.FilesExist(files)
+            print("\nFilesExist response:")
+            for i, file_path in enumerate(response.files):
+                exists = response.exists[i] if i < len(response.exists) else False
+                error = response.errors[i] if i < len(response.errors) else ""
+                status = "exists" if exists else "not found"
+                if error:
+                    status += f" (error: {error})"
+                print(f"  {file_path}: {status}")
             return True
 
         except grpc.RpcError as e:
@@ -129,8 +162,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Test Draw Things gRPC server API')
     parser.add_argument('--host', default='localhost',
                       help='Server hostname (default: localhost)')
-    parser.add_argument('--port', type=int, default=7859,
-                      help='Server port (default: 7859)')
+    parser.add_argument('--port', type=int, default=7860,
+                      help='Server port (default: 7860)')
     parser.add_argument('--shared-secret',
                       help='Shared secret for authentication')
     parser.add_argument('--model-path',
@@ -144,26 +177,17 @@ def parse_args():
                       default='echo',
                       help='Method to test (default: echo)')
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Force no TLS since server is running with --no-tls
+    args.tls = False
+
+    return args
 
 def create_channel(args):
     """Create a gRPC channel with appropriate options."""
     target = f"{args.host}:{args.port}"
-
-    # Add authentication if provided
-    options = []
-    if args.shared_secret:
-        options.append(('grpc.ssl_target_name_override', args.shared_secret))
-
-    if args.tls:
-        # Create secure channel with TLS
-        credentials = grpc.ssl_channel_credentials()
-        channel = grpc.secure_channel(target, credentials, options=options)
-    else:
-        # Create insecure channel
-        channel = grpc.insecure_channel(target, options=options)
-
-    return channel
+    return grpc.insecure_channel(target)
 
 def test_echo(stub):
     """Test the Echo endpoint."""
@@ -178,7 +202,7 @@ def test_echo(stub):
 def test_connection(channel, args):
     """Test connection to the server using the specified method."""
     try:
-        stub = ImageGenerationStub()
+        stub = ImageGenerationStub(channel)
 
         if args.method == 'echo':
             return test_echo(stub)
