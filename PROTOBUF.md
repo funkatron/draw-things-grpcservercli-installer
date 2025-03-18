@@ -29,6 +29,11 @@ message EchoResponse {
   string message = 1;  // Contains "HELLO"
 }
 ```
+**Implementation Notes**:
+- Empty request message serializes to zero bytes
+- Response message uses minimal encoding
+- Message field is always "HELLO"
+- No error fields needed
 
 ### File Management Messages
 ```protobuf
@@ -52,6 +57,13 @@ message UploadFileResponse {
   string message = 2;       // Status message or error
 }
 ```
+**Implementation Notes**:
+- FilesExist uses parallel arrays for response
+- File paths are relative to model directory
+- Empty error strings indicate success
+- Upload chunks should be reasonable size (e.g., 1MB)
+- Last chunk may be smaller than others
+- Filename should include relative path
 
 ### Image Generation Messages
 ```protobuf
@@ -77,6 +89,13 @@ message ImageGenerationResponse {
   repeated SignpostEvent events = 3;   // Progress events
 }
 ```
+**Implementation Notes**:
+- All numeric fields have sensible defaults
+- Images returned as PNG format in bytes
+- Info strings contain generation parameters
+- Events track generation progress
+- Batch operations return multiple images
+- High-res fix requires additional processing
 
 ### Progress Tracking
 ```protobuf
@@ -97,6 +116,12 @@ message SignpostEvent {
   EventType type = 3;
 }
 ```
+**Implementation Notes**:
+- Timestamps in milliseconds since epoch
+- Events sent in chronological order
+- Event names provide additional context
+- Types indicate processing stage
+- Second pass events for high-res fix
 
 ## Implementation Notes
 
@@ -104,9 +129,23 @@ message SignpostEvent {
 - Uses binary protobuf format for all messages
 - Response messages include error details when needed
 - Empty messages (like EchoRequest) are serialized as empty bytes
+- Messages are length-prefixed in transport
+- Uses standard protobuf wire format
+- Handles UTF-8 encoding for strings
 
 ### Field Types
 - Uses standard protobuf field types:
+  - `string` for text fields (UTF-8 encoded)
+  - `bytes` for binary data (raw bytes)
+  - `int32`/`int64` for integers (varint encoded)
+  - `float` for floating-point numbers (32-bit)
+  - `bool` for boolean values (varint encoded)
+  - `repeated` for lists/arrays (packed when possible)
+- Field numbers are important for compatibility
+- Optional fields may be omitted
+- Repeated fields may be empty
+- Unknown fields are preserved
+
   - `string` for text fields
   - `bytes` for binary data
   - `int32`/`int64` for integers
