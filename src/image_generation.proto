@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package drawthings;
+
+service ImageGenerationService {
+  // Echo endpoint for health check
+  rpc Echo(EchoRequest) returns (EchoResponse);
+
+  // Check if model files exist
+  rpc FilesExist(FilesExistRequest) returns (FilesExistResponse);
+
+  // Generate images based on parameters
+  rpc GenerateImage(ImageGenerationRequest) returns (ImageGenerationResponse);
+
+  // Upload model files
+  rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+}
+
+message EchoRequest {
+}
+
+message EchoResponse {
+  string message = 1;
+}
+
+message FilesExistRequest {
+  repeated string files = 1;
+}
+
+message FilesExistResponse {
+  repeated FileStatus files = 1;
+}
+
+message FileStatus {
+  string path = 1;
+  bool exists = 2;
+}
+
+message ImageGenerationRequest {
+  string prompt = 1;
+  string negative_prompt = 2;
+  int32 width = 3;
+  int32 height = 4;
+  int32 steps = 5;
+  float cfg_scale = 6;
+  int64 seed = 7;
+  string sampler = 8;
+  bool restore_faces = 9;
+  bool enable_hr = 10;
+  float denoising_strength = 11;
+  int32 batch_size = 12;
+  int32 batch_count = 13;
+}
+
+message ImageGenerationResponse {
+  repeated bytes images = 1;
+  repeated string info = 2;
+  repeated SignpostEvent events = 3;
+}
+
+message UploadFileRequest {
+  string filename = 1;
+  bytes chunk_data = 2;
+}
+
+message UploadFileResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message SignpostEvent {
+  string name = 1;
+  int64 timestamp = 2;
+  enum EventType {
+    TEXT_ENCODED = 0;
+    IMAGE_DECODED = 1;
+    IMAGE_ENCODED = 2;
+    SAMPLING = 3;
+    FACE_RESTORED = 4;
+    IMAGE_UPSCALED = 5;
+    SECOND_PASS_IMAGE_DECODED = 6;
+    SECOND_PASS_IMAGE_ENCODED = 7;
+    SECOND_PASS_SAMPLING = 8;
+  }
+  EventType type = 3;
+}
