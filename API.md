@@ -12,18 +12,27 @@ The Draw Things gRPC server provides a service for image generation and model ma
   - `--port`: Server port (default: 7860)
   - `--no-tls`: Disable TLS (recommended for local use)
   - Model directory path (required)
+- **Example**:
+  ```bash
+  gRPCServerCLI "/Users/user/Library/Containers/com.liuliu.draw-things/Data/Documents/Models" --port 7860 --no-tls
+  ```
 
 ### Connection Details
 - **Default Host**: localhost
 - **Default Port**: 7860
 - **TLS**: Optional, disabled by default
 - **Service Type**: `com.draw-things.image-generation-service`
+- **Process Name**: Appears as `gRPCServerCLI` in system processes
 
 ### Model Directory
 Default location (macOS):
 ```
 ~/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
 ```
+
+Required model files:
+- `stable-diffusion/model.safetensors`: Main Stable Diffusion model
+- `vae/model.safetensors`: VAE model for image encoding/decoding
 
 ## Service: ImageGenerationService
 
@@ -37,6 +46,10 @@ Default location (macOS):
   ```
   b'\n\x06HELLO '
   ```
+- **Usage**:
+  - Use to verify server is running and accepting connections
+  - No authentication required
+  - Returns immediately without checking model files
 
 ### 2. FilesExist
 - **Method**: `/ImageGenerationService/FilesExist`
@@ -59,6 +72,11 @@ Default location (macOS):
 - **Common Model Paths**:
   - `stable-diffusion/model.safetensors`
   - `vae/model.safetensors`
+- **Response Behavior**:
+  - Returns parallel arrays for files, existence status, and errors
+  - Files array matches input order
+  - Empty error strings for successful checks
+  - Non-empty error strings indicate access or validation issues
 
 ### 3. GenerateImage
 - **Method**: `/ImageGenerationService/GenerateImage`
@@ -118,6 +136,7 @@ Default location (macOS):
 - Content types supported:
   - `application/grpc`
   - `application/grpc+proto`
+- Binary format preferred for efficiency
 
 ### Error Handling
 - Returns standard gRPC status codes
@@ -126,14 +145,40 @@ Default location (macOS):
   - `UNIMPLEMENTED`: Method not available
   - `INTERNAL`: Request processing error
   - `INVALID_ARGUMENT`: Malformed request
+- Error details included in response messages where possible
+- Transport-level errors use gRPC status codes
+- Application-level errors use message-specific error fields
 
 ### Testing
 - Echo endpoint can be used to verify connectivity
 - FilesExist endpoint can verify model installation
 - All endpoints support error details in responses
 - Server does not support gRPC reflection API
+- Test script provided for endpoint verification
+- Recommended testing order:
+  1. Echo - verify basic connectivity
+  2. FilesExist - verify model installation
+  3. GenerateImage - test image generation
+  4. UploadFile - test model management
 
 ### Security
 - Local-only service by default
 - Optional TLS support
 - No authentication required for local connections
+- Server binds to localhost interface
+- Access restricted to local machine by default
+
+### Performance
+- Server runs as a standalone process
+- Single instance per machine
+- Maintains model files in memory
+- Supports concurrent requests
+- Uses efficient binary protocol
+- Minimizes data copying with streaming responses
+
+### Debugging
+- Server logs to stdout/stderr
+- Process can be monitored via standard tools
+- Error messages are descriptive
+- Response messages include detailed status
+- Test script provides verbose output option
