@@ -1,4 +1,6 @@
-# Draw Things Protobuf Definitions
+# Draw Things Protocol Buffer Specifications
+
+This document provides detailed protocol buffer specifications for the Draw Things gRPC server. For API usage, see [API.md](API.md).
 
 ## Service Definition
 
@@ -18,63 +20,51 @@ service ImageGenerationService {
 }
 ```
 
-## Message Definitions
+## Message Specifications
 
-### Echo Messages
+### Health Check
 ```protobuf
 message EchoRequest {
 }
 
 message EchoResponse {
-  string message = 1;  // Contains "HELLO"
+  string message = 1;  // Always contains "HELLO"
 }
 ```
-**Implementation Notes**:
-- Empty request message serializes to zero bytes
-- Response message uses minimal encoding
-- Message field is always "HELLO"
-- No error fields needed
 
-### File Management Messages
+### File Management
 ```protobuf
 message FilesExistRequest {
-  repeated string files = 1;  // List of files to check
+  repeated string files = 1;  // Files to check
 }
 
 message FilesExistResponse {
-  repeated string files = 1;   // List of checked files
-  repeated bool exists = 2;    // Existence status for each file
-  repeated string errors = 3;  // Error messages if any
+  repeated string files = 1;   // Checked files
+  repeated bool exists = 2;    // Existence status
+  repeated string errors = 3;  // Error messages
 }
 
 message UploadFileRequest {
   string filename = 1;      // Target filename
-  bytes chunk_data = 2;     // File data chunk
+  bytes chunk_data = 2;     // File chunk data
 }
 
 message UploadFileResponse {
-  bool success = 1;         // Upload success status
-  string message = 2;       // Status message or error
+  bool success = 1;         // Upload status
+  string message = 2;       // Status message
 }
 ```
-**Implementation Notes**:
-- FilesExist uses parallel arrays for response
-- File paths are relative to model directory
-- Empty error strings indicate success
-- Upload chunks should be reasonable size (e.g., 1MB)
-- Last chunk may be smaller than others
-- Filename should include relative path
 
-### Image Generation Messages
+### Image Generation
 ```protobuf
 message ImageGenerationRequest {
   string prompt = 1;              // Generation prompt
   string negative_prompt = 2;     // Negative prompt
   int32 width = 3;               // Image width
   int32 height = 4;              // Image height
-  int32 steps = 5;               // Number of steps
+  int32 steps = 5;               // Sampling steps
   float cfg_scale = 6;           // CFG scale
-  int64 seed = 7;               // Random seed
+  int64 seed = 7;                // Random seed
   string sampler = 8;            // Sampler name
   bool restore_faces = 9;        // Face restoration
   bool enable_hr = 10;           // High-res fix
@@ -84,44 +74,58 @@ message ImageGenerationRequest {
 }
 
 message ImageGenerationResponse {
-  repeated bytes images = 1;           // Generated images
+  repeated bytes images = 1;           // PNG format images
   repeated string info = 2;            // Generation info
   repeated SignpostEvent events = 3;   // Progress events
 }
 ```
-**Implementation Notes**:
-- All numeric fields have sensible defaults
-- Images returned as PNG format in bytes
-- Info strings contain generation parameters
-- Events track generation progress
-- Batch operations return multiple images
-- High-res fix requires additional processing
 
 ### Progress Tracking
 ```protobuf
 message SignpostEvent {
-  string name = 1;
-  int64 timestamp = 2;
+  string name = 1;          // Event description
+  int64 timestamp = 2;      // Milliseconds since epoch
   enum EventType {
-    TEXT_ENCODED = 0;
-    IMAGE_DECODED = 1;
-    IMAGE_ENCODED = 2;
-    SAMPLING = 3;
-    FACE_RESTORED = 4;
-    IMAGE_UPSCALED = 5;
-    SECOND_PASS_IMAGE_DECODED = 6;
-    SECOND_PASS_IMAGE_ENCODED = 7;
-    SECOND_PASS_SAMPLING = 8;
+    TEXT_ENCODED = 0;             // Text encoding complete
+    IMAGE_DECODED = 1;            // Image decoding complete
+    IMAGE_ENCODED = 2;            // Image encoding complete
+    SAMPLING = 3;                 // Sampling in progress
+    FACE_RESTORED = 4;            // Face restoration complete
+    IMAGE_UPSCALED = 5;           // Upscaling complete
+    SECOND_PASS_IMAGE_DECODED = 6; // HR fix decode complete
+    SECOND_PASS_IMAGE_ENCODED = 7; // HR fix encode complete
+    SECOND_PASS_SAMPLING = 8;      // HR fix sampling complete
   }
   EventType type = 3;
 }
 ```
-**Implementation Notes**:
-- Timestamps in milliseconds since epoch
-- Events sent in chronological order
-- Event names provide additional context
-- Types indicate processing stage
-- Second pass events for high-res fix
+
+## Wire Format
+
+### Field Encoding
+- `string`: UTF-8 encoded text
+- `bytes`: Raw binary data
+- `int32`/`int64`: Variable-length encoding
+- `float`: 32-bit IEEE 754
+- `bool`: Varint encoded (0/1)
+- `repeated`: Length-prefixed sequence
+- `enum`: Varint encoded
+
+### Message Format
+- Messages are length-prefixed
+- Fields are key-value pairs
+- Keys encode field number and wire type
+- Unknown fields are preserved
+- Optional fields may be omitted
+- Repeated fields may be empty
+
+### Transport
+- Uses standard gRPC over HTTP/2
+- Binary protocol buffer encoding
+- Messages framed with length prefix
+- Streaming supported where specified
+- TLS encryption available
+- Optional response compression
 
 ## Implementation Notes
 
@@ -145,13 +149,6 @@ message SignpostEvent {
 - Optional fields may be omitted
 - Repeated fields may be empty
 - Unknown fields are preserved
-
-  - `string` for text fields
-  - `bytes` for binary data
-  - `int32`/`int64` for integers
-  - `float` for floating-point numbers
-  - `bool` for boolean values
-  - `repeated` for lists/arrays
 
 ### Error Handling
 - Error messages are included in response messages

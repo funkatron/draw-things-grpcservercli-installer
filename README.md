@@ -1,79 +1,134 @@
-# Draw Things gRPCServer Installer
+# Draw Things gRPCServer CLI Installer
 
-A Python script to install and manage the Draw Things Community gRPCServer on macOS. This installer handles downloading the latest gRPCServer binary, setting up a LaunchAgent service, and managing the server configuration.
+A Python-based installer and manager for the Draw Things Community gRPCServer on macOS. This tool manages the installation and configuration of the gRPCServer binary and service. This allows quick setup of a gRPCServer setup for distributed image generation.
+
+## Features
+
+- 🚀 One-command installation of gRPCServer binary
+- 🔄 Automatic service management via LaunchAgent (startup, crash recovery)
+- ⚙️ Command-line configuration of all gRPCServer options
+- 🔧 Easy service management (start/stop/restart)
 
 ## Requirements
 
-- macOS 15
-- Python 3.9+
+- macOS 15 or later
+- Python 3.9 or later
+- Python packages (auto-installed):
+  - grpcio ≥ 1.54.2
+  - grpcio-reflection ≥ 1.54.2
+  - grpcio-tools ≥ 1.54.2
+  - protobuf ≥ 4.23.1
+  - pytest ≥ 7.0.0 (for development)
 
-## Installation
+## Quick Start
 
-1. Download the installer script:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git
+   cd draw-things-grpcservercli-installer
+   ```
+
+2. Install with default settings:
+   ```bash
+   ./src/install-gRPCServerCLI.py
+   ```
+    When you run the installer for the first time, you'll see output similar to this:
+
+    ```
+    ~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/install-gRPCServerCLI.py
+    Checking for existing services...
+
+    Found running gRPC processes:
+      - 45475 /Users/<username>/bin/gRPCServerCLI-macOS /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models --model-browser --port=7590
+
+    Found existing Draw Things gRPC installation!
+    It's recommended to uninstall before proceeding.
+    Would you like to uninstall now? (Y/n): y
+    Uninstalling gRPCServerCLI...
+
+    Uninstall complete!
+    Note: Model directory was not removed.
+
+    Continuing with fresh installation...
+
+
+    Downloading gRPCServerCLI...
+    Checking for latest release...
+    Found latest version: v1.20250403.2
+    Cannot write to /usr/local/bin, using /Users/<username>/.local/bin instead
+    Service installed and started at /Users/<username>/Library/LaunchAgents/com.drawthings.grpcserver.plist
+    Server configuration:
+
+    Waiting for service to start...
+
+    Testing gRPCServerCLI...
+    Found gRPCServerCLI process (PID: 44328)
+    Server is listening on port 7859
+
+    Installation completed successfully!
+    Models directory: /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
+    Binary location: /Users/<username>/.local/bin/gRPCServerCLI
+
+    The gRPCServerCLI service is running and will start automatically on login.
+    You can manage it with these commands:
+        launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+        launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+    ```
+
+## Installation Options
+
+### Common Usage
+
 ```bash
-git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git
+# Custom model directory
+./src/install-gRPCServerCLI.py -m /path/to/models
+
+# Custom port and server name
+./src/install-gRPCServerCLI.py -p 7860 -n "MyServer"
+
+# Enable security (recommended)
+./src/install-gRPCServerCLI.py -s "your-secret-key"
+
+# Enable model browser
+./src/install-gRPCServerCLI.py --model-browser
+
+# Silent installation
+./src/install-gRPCServerCLI.py -q
 ```
 
-## Usage
+### Configuration Options
 
-```bash
-# Basic installation with defaults
-./src/install-grpcservercli.py
+#### Installer Settings
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-m, --model-path` | Model directory location | Draw Things app models directory |
+| `-q, --quiet` | Silent installation | False |
+| `--uninstall` | Remove installation | - |
+| `--restart` | Restart service | - |
 
-# Install with custom model path
-./src/install-grpcservercli.py -m /path/to/models
-
-# Install with custom port and server name
-./src/install-grpcservercli.py -p 7860 -n "MyServer"
-
-# Install with security options
-./src/install-grpcservercli.py -s "mysecret"
-
-# Install with model browser enabled
-./src/install-grpcservercli.py --model-browser
-
-# Install with proxy configuration
-./src/install-grpcservercli.py --join '{"host":"proxy.local", "port":7859}'
-
-# Restart the service
-./src/install-grpcservercli.py --restart
-
-# Quiet install with defaults
-./src/install-grpcservercli.py -q
-
-# Uninstall
-./src/install-grpcservercli.py --uninstall
-```
-
-## Options
-
-### Installer Options
-- `-m, --model-path`: Custom path to store models (default: Draw Things app models directory)
-- `-h, --help`: Show help message
-- `--uninstall`: Uninstall gRPCServerCLI and remove all related files
-- `--restart`: Restart the gRPCServerCLI service
-- `-q, --quiet`: Minimize output and assume default answers to prompts
-
-### gRPCServerCLI Options
-- `-n, --name`: Server name in local network (default: machine name)
-- `-p, --port`: Port to run the server on (default: 7859)
-- `-a, --address`: Address to bind to (default: 0.0.0.0)
-- `-g, --gpu`: GPU index to use (default: 0)
-- `-d, --datadog-api-key`: Datadog API key for logging backend
-- `-s, --shared-secret`: Shared secret for server security
-- `--no-tls`: Disable TLS for connections (not recommended)
-- `--no-response-compression`: Disable response compression
-- `--model-browser`: Enable model browsing
-- `--no-flash-attention`: Disable Flash Attention
-- `--debug`: Enable verbose model inference logging
-- `--join`: JSON configuration for proxy setup
+#### Server Settings
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-n, --name` | Network server name | Machine name |
+| `-p, --port` | Server port | 7859 |
+| `-a, --address` | Network address | 0.0.0.0 |
+| `-g, --gpu` | GPU device index | 0 |
+| `-s, --shared-secret` | Authentication key | None |
+| `-d, --datadog-api-key` | Monitoring API key | None |
+| `--no-tls` | Disable encryption | False |
+| `--no-response-compression` | Disable compression | False |
+| `--model-browser` | Enable model browser | False |
+| `--no-flash-attention` | Disable Flash Attention | False |
+| `--debug` | Verbose logging | False |
 
 ## Advanced Configuration
 
-### Proxy Setup
-The `--join` option accepts a JSON string for proxy configuration:
-```json
-{
+### Distributed Setup
+
+Use `--join` for distributed configurations:
+
+```bash
+./src/install-gRPCServerCLI.py --join '{
   "host": "proxy.example.com",
   "port": 7859,
   "servers": [
@@ -83,56 +138,79 @@ The `--join` option accepts a JSON string for proxy configuration:
       "priority": 1
     }
   ]
-}
+}'
 ```
 
 Required fields:
-- `host`: The proxy server hostname
-- `port`: The proxy server port
+- `host`: Proxy server address
+- `port`: Proxy server port
 
 Optional fields:
-- `servers`: List of GPU servers with:
-  - `address`: Server hostname
+- `servers`: GPU server list
+  - `address`: Server address
   - `port`: Server port
   - `priority`: Server priority (1=high, 2=low)
 
 ## Service Management
 
-The installer creates a LaunchAgent service that:
-- Starts automatically on login
-- Restarts automatically if it crashes
-- Can be managed with:
-  ```bash
-  # Stop the service
-  launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+The installer creates a LaunchAgent (`com.drawthings.grpcserver`) that:
+- Starts on user login
+- Auto-restarts after crashes
+- Can be managed via standard `launchctl` commands
+-
 
-  # Start the service
-  launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+```bash
+# Stop service
+launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
 
-  # Restart the service
-  ./install-grpcservercli.py --restart
-  ```
+# Start service
+launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
 
-## Troubleshooting
+# Restart service
+./src/install-gRPCServerCLI.py --restart
+```
 
-1. **Port already in use**
-   - The installer will detect if the port is in use and show which process is using it
-   - Use a different port with `-p` or stop the conflicting process
+## API Endpoints
 
-2. **Permission denied when installing to /usr/local/bin**
-   - The installer will automatically fall back to ~/.local/bin
-   - You can run with sudo if you need to install in /usr/local/bin
+- `Echo`: Health check
+- `FilesExist`: Model file verification
+- `GenerateImage`: Image generation
+- `UploadFile`: Model file upload
 
-3. **Service fails to start**
-   - Check the system log for errors: `log show --predicate 'processImagePath contains "gRPCServerCLI"' --last 5m`
-   - Ensure the model path exists and is accessible
-   - Try restarting with `--restart` option
+See [API.md](API.md) and [PROTOBUF.md](PROTOBUF.md) for detailed documentation.
+
+## Debugging
+
+Enable detailed logging:
+```bash
+./src/install-gRPCServerCLI.py --debug
+```
+
+## Development
+
+Run tests:
+```bash
+pytest tests/
+```
+
+### Project Structure
+```
+.
+├── src/                    # Core source code
+│   ├── install-gRPCServerCLI.py  # Installer script
+│   ├── image_generation.proto    # API definitions
+│   └── grpc-test.py             # Test client
+├── tests/                 # Test suite
+├── utils/                 # Utilities
+├── API.md                # API docs
+└── PROTOBUF.md           # Protocol docs
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file.
 
 ## Acknowledgments
 
-- [Draw Things](https://drawthings.ai/)
-- [Draw Things Community](https://github.com/drawthingsai/draw-things-community)
+- [Draw Things](https://drawthings.ai/) - Main application
+- [Draw Things Community](https://github.com/drawthingsai/draw-things-community) - Community tools

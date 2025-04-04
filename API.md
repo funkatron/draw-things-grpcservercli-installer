@@ -7,22 +7,12 @@ The Draw Things gRPC server provides a service for image generation and model ma
 ## Server Configuration
 
 ### Binary Location
-- **CLI Tool**: `/Users/<user>/.local/bin/gRPCServerCLI`
-- **Arguments**:
-  - `--port`: Server port (default: 7860)
-  - `--no-tls`: Disable TLS (recommended for local use)
-  - Model directory path (required)
-- **Example**:
-  ```bash
-  gRPCServerCLI "/Users/user/Library/Containers/com.liuliu.draw-things/Data/Documents/Models" --port 7860 --no-tls
-  ```
-
-### Connection Details
-- **Default Host**: localhost
-- **Default Port**: 7860
-- **TLS**: Optional, disabled by default
-- **Service Type**: `com.draw-things.image-generation-service`
-- **Process Name**: Appears as `gRPCServerCLI` in system processes
+- **CLI Tool**: `~/.local/bin/gRPCServerCLI` or `/usr/local/bin/gRPCServerCLI`
+- **Default Settings**:
+  - Port: 7859
+  - Host: 0.0.0.0
+  - TLS: Enabled by default
+  - Service Name: `com.drawthings.grpcserver`
 
 ### Model Directory
 Default location (macOS):
@@ -34,151 +24,132 @@ Required model files:
 - `stable-diffusion/model.safetensors`: Main Stable Diffusion model
 - `vae/model.safetensors`: VAE model for image encoding/decoding
 
-## Service: ImageGenerationService
+## API Endpoints
 
 ### 1. Echo
-- **Method**: `/ImageGenerationService/Echo`
-- **Type**: Unary RPC
-- **Description**: Simple connectivity test endpoint
-- **Request**: Empty message
-- **Response**: Returns "HELLO" in a protobuf message
-- **Example Response**:
-  ```
-  b'\n\x06HELLO '
-  ```
-- **Usage**:
-  - Use to verify server is running and accepting connections
-  - No authentication required
-  - Returns immediately without checking model files
+Health check endpoint to verify server connectivity.
+
+**Request**: Empty message
+```protobuf
+message EchoRequest {
+}
+```
+
+**Response**: Returns "HELLO"
+```protobuf
+message EchoResponse {
+  string message = 1;
+}
+```
 
 ### 2. FilesExist
-- **Method**: `/ImageGenerationService/FilesExist`
-- **Type**: Unary RPC
-- **Description**: Checks if specified model files exist in the server's model directory
-- **Request Format**:
-  ```protobuf
-  message FilesExistRequest {
-    repeated string files = 1;
-  }
-  ```
-- **Response Format**:
-  ```protobuf
-  message FilesExistResponse {
-    repeated string files = 1;   // List of checked files
-    repeated bool exists = 2;    // Existence status for each file
-    repeated string errors = 3;  // Error messages if any
-  }
-  ```
-- **Common Model Paths**:
-  - `stable-diffusion/model.safetensors`
-  - `vae/model.safetensors`
-- **Response Behavior**:
-  - Returns parallel arrays for files, existence status, and errors
-  - Files array matches input order
-  - Empty error strings for successful checks
-  - Non-empty error strings indicate access or validation issues
+Verifies existence of model files in the server's model directory.
+
+**Request**:
+```protobuf
+message FilesExistRequest {
+  repeated string files = 1;  // List of files to check
+}
+```
+
+**Response**:
+```protobuf
+message FilesExistResponse {
+  repeated string files = 1;   // List of checked files
+  repeated bool exists = 2;    // Existence status for each file
+  repeated string errors = 3;  // Error messages if any
+}
+```
 
 ### 3. GenerateImage
-- **Method**: `/ImageGenerationService/GenerateImage`
-- **Type**: Unary RPC
-- **Description**: Generates images based on provided parameters
-- **Request Format**:
-  ```protobuf
-  message ImageGenerationRequest {
-    string prompt = 1;
-    string negative_prompt = 2;
-    int32 width = 3;
-    int32 height = 4;
-    int32 steps = 5;
-    float cfg_scale = 6;
-    int64 seed = 7;
-    string sampler = 8;
-    bool restore_faces = 9;
-    bool enable_hr = 10;
-    float denoising_strength = 11;
-    int32 batch_size = 12;
-    int32 batch_count = 13;
-  }
-  ```
-- **Response Format**:
-  ```protobuf
-  message ImageGenerationResponse {
-    repeated bytes images = 1;
-    repeated string info = 2;
-    repeated SignpostEvent events = 3;
-  }
-  ```
+Main endpoint for image generation.
+
+**Request**:
+```protobuf
+message ImageGenerationRequest {
+  string prompt = 1;              // Generation prompt
+  string negative_prompt = 2;     // Negative prompt
+  int32 width = 3;               // Image width
+  int32 height = 4;              // Image height
+  int32 steps = 5;               // Number of steps
+  float cfg_scale = 6;           // CFG scale
+  int64 seed = 7;                // Random seed
+  string sampler = 8;            // Sampler name
+  bool restore_faces = 9;        // Face restoration
+  bool enable_hr = 10;           // High-res fix
+  float denoising_strength = 11; // Denoising strength
+  int32 batch_size = 12;         // Images per batch
+  int32 batch_count = 13;        // Number of batches
+}
+```
+
+**Response**:
+```protobuf
+message ImageGenerationResponse {
+  repeated bytes images = 1;           // Generated images (PNG format)
+  repeated string info = 2;            // Generation parameters
+  repeated SignpostEvent events = 3;   // Progress events
+}
+```
 
 ### 4. UploadFile
-- **Method**: `/ImageGenerationService/UploadFile`
-- **Type**: Client Streaming RPC
-- **Description**: Allows uploading files to the server
-- **Request Format**:
-  ```protobuf
-  message UploadFileRequest {
-    string filename = 1;
-    bytes chunk_data = 2;
+Endpoint for uploading model files to the server.
+
+**Request** (streaming):
+```protobuf
+message UploadFileRequest {
+  string filename = 1;      // Target filename
+  bytes chunk_data = 2;     // File data chunk
+}
+```
+
+**Response**:
+```protobuf
+message UploadFileResponse {
+  bool success = 1;         // Upload status
+  string message = 2;       // Status/error message
+}
+```
+
+## Progress Events
+
+Generation progress is tracked via SignpostEvents:
+
+```protobuf
+message SignpostEvent {
+  string name = 1;          // Event description
+  int64 timestamp = 2;      // Milliseconds since epoch
+  enum EventType {
+    TEXT_ENCODED = 0;
+    IMAGE_DECODED = 1;
+    IMAGE_ENCODED = 2;
+    SAMPLING = 3;
+    FACE_RESTORED = 4;
+    IMAGE_UPSCALED = 5;
+    SECOND_PASS_IMAGE_DECODED = 6;
+    SECOND_PASS_IMAGE_ENCODED = 7;
+    SECOND_PASS_SAMPLING = 8;
   }
-  ```
-- **Response Format**:
-  ```protobuf
-  message UploadFileResponse {
-    bool success = 1;
-    string message = 2;
-  }
-  ```
+  EventType type = 3;
+}
+```
 
-## Implementation Notes
+## Error Handling
 
-### Protocol Details
-- Uses Protocol Buffers for message serialization
-- Supports both binary and text formats
-- Content types supported:
-  - `application/grpc`
-  - `application/grpc+proto`
-- Binary format preferred for efficiency
+- Uses standard gRPC status codes for transport errors
+- Application errors are included in response messages
+- Common status codes:
+  - `OK`: Success
+  - `INVALID_ARGUMENT`: Invalid request parameters
+  - `NOT_FOUND`: Model file not found
+  - `INTERNAL`: Server processing error
+  - `UNIMPLEMENTED`: Method not supported
 
-### Error Handling
-- Returns standard gRPC status codes
-- Includes detailed error messages in responses
-- Common error cases:
-  - `UNIMPLEMENTED`: Method not available
-  - `INTERNAL`: Request processing error
-  - `INVALID_ARGUMENT`: Malformed request
-- Error details included in response messages where possible
-- Transport-level errors use gRPC status codes
-- Application-level errors use message-specific error fields
+## Security
 
-### Testing
-- Echo endpoint can be used to verify connectivity
-- FilesExist endpoint can verify model installation
-- All endpoints support error details in responses
-- Server does not support gRPC reflection API
-- Test script provided for endpoint verification
-- Recommended testing order:
-  1. Echo - verify basic connectivity
-  2. FilesExist - verify model installation
-  3. GenerateImage - test image generation
-  4. UploadFile - test model management
+- TLS encryption enabled by default
+- Optional shared secret authentication
+- Server binds to all interfaces (0.0.0.0)
+- Response compression enabled by default
 
-### Security
-- Local-only service by default
-- Optional TLS support
-- No authentication required for local connections
-- Server binds to localhost interface
-- Access restricted to local machine by default
-
-### Performance
-- Server runs as a standalone process
-- Single instance per machine
-- Maintains model files in memory
-- Supports concurrent requests
-- Uses efficient binary protocol
-- Minimizes data copying with streaming responses
-
-### Debugging
-- Server logs to stdout/stderr
-- Process can be monitored via standard tools
-- Error messages are descriptive
-- Response messages include detailed status
-- Test script provides verbose output option
+For detailed protocol buffer specifications, see [PROTOBUF.md](PROTOBUF.md).
