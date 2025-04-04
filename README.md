@@ -1,6 +1,6 @@
 # Draw Things gRPCServer CLI Installer
 
-A Python-based installer and manager for the Draw Things Community gRPCServer on macOS. This tool manages the installation and configuration of the gRPCServer binary and service. This allows quick setup of a gRPCServer setup for distributed image generation.
+A Python-based installer and manager for the Draw Things Community gRPCServer on macOS. This tool manages the installation and configuration of the gRPCServer binary, enabling distributed AI image generation.
 
 ## Features
 
@@ -32,48 +32,49 @@ A Python-based installer and manager for the Draw Things Community gRPCServer on
    ```bash
    ./src/install-gRPCServerCLI.py
    ```
-    When you run the installer for the first time, you'll see output similar to this:
 
-    ```
-    ~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/install-gRPCServerCLI.py
-    Checking for existing services...
+### Example Installation Output
 
-    Found running gRPC processes:
-      - 45475 /Users/<username>/bin/gRPCServerCLI-macOS /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models --model-browser --port=7590
+```
+~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/install-gRPCServerCLI.py
+Checking for existing services...
 
-    Found existing Draw Things gRPC installation!
-    It's recommended to uninstall before proceeding.
-    Would you like to uninstall now? (Y/n): y
-    Uninstalling gRPCServerCLI...
+Found running gRPC processes:
+  - 45475 /Users/<username>/bin/gRPCServerCLI-macOS /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models --model-browser --port=7590
 
-    Uninstall complete!
-    Note: Model directory was not removed.
+Found existing Draw Things gRPC installation!
+It's recommended to uninstall before proceeding.
+Would you like to uninstall now? (Y/n): y
+Uninstalling gRPCServerCLI...
 
-    Continuing with fresh installation...
+Uninstall complete!
+Note: Model directory was not removed.
+
+Continuing with fresh installation...
 
 
-    Downloading gRPCServerCLI...
-    Checking for latest release...
-    Found latest version: v1.20250403.2
-    Cannot write to /usr/local/bin, using /Users/<username>/.local/bin instead
-    Service installed and started at /Users/<username>/Library/LaunchAgents/com.drawthings.grpcserver.plist
-    Server configuration:
+Downloading gRPCServerCLI...
+Checking for latest release...
+Found latest version: v1.20250403.2
+Cannot write to /usr/local/bin, using /Users/<username>/.local/bin instead
+Service installed and started at /Users/<username>/Library/LaunchAgents/com.drawthings.grpcserver.plist
+Server configuration:
 
-    Waiting for service to start...
+Waiting for service to start...
 
-    Testing gRPCServerCLI...
-    Found gRPCServerCLI process (PID: 44328)
-    Server is listening on port 7859
+Testing gRPCServerCLI...
+Found gRPCServerCLI process (PID: 44328)
+Server is listening on port 7859
 
-    Installation completed successfully!
-    Models directory: /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
-    Binary location: /Users/<username>/.local/bin/gRPCServerCLI
+Installation completed successfully!
+Models directory: /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
+Binary location: /Users/<username>/.local/bin/gRPCServerCLI
 
-    The gRPCServerCLI service is running and will start automatically on login.
-    You can manage it with these commands:
-        launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-        launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-    ```
+The gRPCServerCLI service is running and will start automatically on login.
+You can manage it with these commands:
+    launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+    launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
+```
 
 ## Installation Options
 
@@ -157,7 +158,6 @@ The installer creates a LaunchAgent (`com.drawthings.grpcserver`) that:
 - Starts on user login
 - Auto-restarts after crashes
 - Can be managed via standard `launchctl` commands
--
 
 ```bash
 # Stop service
