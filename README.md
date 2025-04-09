@@ -105,83 +105,66 @@ with handle_grpc_error():
 
 ### Common Tasks
 
-#### Installing with Custom Settings
-
-If you need to customize the server installation:
+#### Custom Server Settings
 
 ```bash
-# Install on a specific port and GPU
-dts-util install --port 7860 --gpu 1
+# Change port and model path
+dts-util install --port 7860 --model-path /path/to/model
 
-# Install with a custom model path
-dts-util install --model-path /path/to/your/model
-
-# Install with security options
-dts-util install --shared-secret your-secret-here
-
-# Install with model browser enabled
-dts-util install --model-browser
-
-# Install with debug logging
-dts-util install --debug
+# Enable advanced features
+dts-util install --model-browser --debug
 ```
 
-#### Managing the Server
-
-Basic server management commands:
+#### Secure Setup
 
 ```bash
-# Check if the server is running
+# Enable TLS and set a shared secret
+dts-util install --shared-secret "your-secret-here"
+```
+
+#### Server Management
+
+```bash
+# Check server status
 dts-util test
 
 # Restart the server
-dts-util install --restart
+dts-util restart
 
 # Uninstall the server
-dts-util install --uninstall
+dts-util uninstall
 ```
 
-#### Secure Setup (Production)
+## Troubleshooting
 
-For a secure production setup:
+### Server Not Starting
 
+1. Check server status:
 ```bash
-# Install with TLS and authentication
-dts-util install \
-    --shared-secret your-secret-here \
-    --no-tls  # Only use this in trusted networks!
+dts-util test
 ```
 
-Then connect securely from your Python code:
-
-```python
-channel, stub = create_channel_and_stub(
-    host='your-server.com',
-    port=7859,
-    use_tls=True,
-    shared_secret='your-secret-here'
-)
+2. Check server logs:
+```bash
+cat ~/.config/draw-things/server.log
 ```
 
-### Troubleshooting
+### Connection Issues
 
-Common issues and solutions:
+1. Verify server is running:
+```bash
+dts-util test
+```
 
-1. **Server Won't Start**
-   - Check if the port is already in use
-   - Check system logs for errors
-   - Verify GPU availability
+2. Check port availability:
+```bash
+dts-util test --port 7860
+```
 
-2. **Connection Errors**
-   - Verify server is running: `dts-util test`
-   - Check firewall settings
-   - Verify TLS settings if using encryption
-
-3. **Image Generation Fails**
-   - Check server logs for errors
-   - Verify model path is correct
-   - Ensure sufficient GPU memory
-   - Ensure sufficient storage space
+3. Verify TLS settings:
+```bash
+dts-util test --tls
+```
 
 ## Advanced Usage
 
@@ -250,16 +233,11 @@ except Exception as e:
     print(f"Error occurred: {e}")
 ```
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Documentation
 
 ### Package Documentation
 - [API Documentation](API.md): Documentation for this package's utilities and functions
 - [CLI Reference](CLI.md): Complete reference for the `dts-util` command-line tool
-- [Changelog](CHANGELOG.md): History of changes to this project
 
 ### Draw Things gRPC Server Documentation
 - [Protocol Buffer Specifications](PROTOBUF.md): Documentation of the gRPC server's API and message definitions
@@ -282,6 +260,10 @@ pip install -e ".[dev]"
 # Run tests
 pytest tests/
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
