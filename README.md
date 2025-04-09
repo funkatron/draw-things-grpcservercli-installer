@@ -250,11 +250,16 @@ except Exception as e:
     print(f"Error occurred: {e}")
 ```
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Documentation
 
 ### Package Documentation
 - [API Documentation](API.md): Documentation for this package's utilities and functions
 - [CLI Reference](CLI.md): Complete reference for the `dts-util` command-line tool
+- [Changelog](CHANGELOG.md): History of changes to this project
 
 ### Draw Things gRPC Server Documentation
 - [Protocol Buffer Specifications](PROTOBUF.md): Documentation of the gRPC server's API and message definitions
@@ -277,23 +282,6 @@ pip install -e ".[dev]"
 # Run tests
 pytest tests/
 ```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Changelog
-
-### [Unreleased]
-
-#### Added
-- Comprehensive test suite for gRPC utilities
-  - Server availability checking
-  - Error handling for various gRPC scenarios
-  - Channel creation with different configurations
-- Improved error handling in `handle_grpc_error`
-  - Simplified error code checking
-  - Better handling of missing code() methods
 
 ## Contributing
 
