@@ -44,7 +44,7 @@ class DTSServerInstaller:
     AGENTS_DIR = Path.home() / "Library/LaunchAgents"
 
     # GitHub API
-    GITHUB_API_URL = "https://api.github.com/repos/drawthingsai/draw-things-community/tags"
+    GITHUB_API_URL = "https://api.github.com/repos/drawthingsai/draw-things-community/releases/latest"
     FALLBACK_VERSION = "v1.20250225.0"
 
     def __init__(self):
@@ -58,9 +58,10 @@ Draw Things gRPCServerCLI Installer
 This script installs the Draw Things gRPCServerCLI and sets it up as a LaunchAgent service.
 
 Usage:
-    ./grpc_server_installer.py [-m MODEL_PATH] [gRPCServerCLI options]
-    ./grpc_server_installer.py --uninstall
-    ./grpc_server_installer.py --restart
+    dts-util [-m MODEL_PATH] [gRPCServerCLI options]
+    dts-util --uninstall
+    dts-util --restart
+    dts-util test [--port PORT]
 
 The installer will:
 1. Download the gRPCServerCLI binary
@@ -73,6 +74,7 @@ Installer Options:
     --uninstall            Uninstall gRPCServerCLI and remove all related files
     --restart             Restart the gRPCServerCLI service
     -q, --quiet            Minimize output and assume default answers to prompts
+    test                  Test if the server is running and responding
 
 gRPCServerCLI Options:
     -n, --name             Server name in local network (default: machine name)
@@ -103,28 +105,34 @@ Advanced Options:
 
 Examples:
     # Install using default settings
-    ./grpc_server_installer.py
+    dts-util
 
     # Install with custom model path
-    ./grpc_server_installer.py -m /path/to/models
+    dts-util -m /path/to/models
 
     # Install with custom port and server name
-    ./grpc_server_installer.py -p 7860 -n "MyServer"
+    dts-util -p 7860 -n "MyServer"
 
     # Install with security options (recommended for public networks)
-    ./grpc_server_installer.py -s "mysecret"
+    dts-util -s "mysecret"
 
     # Install with model browser enabled
-    ./grpc_server_installer.py --model-browser
+    dts-util --model-browser
 
     # Install with proxy configuration
-    ./grpc_server_installer.py --join '{{"host":"proxy.local", "port":7859}}'
+    dts-util --join '{{"host":"proxy.local", "port":7859}}'
 
     # Restart the service
-    ./grpc_server_installer.py --restart
+    dts-util --restart
+
+    # Test server connection
+    dts-util test
+
+    # Test server connection on specific port
+    dts-util test --port 7859
 
     # Quiet install with defaults
-    ./grpc_server_installer.py -q
+    dts-util -q
 """
 
     def validate_join_config(self, join_config_str):
@@ -167,12 +175,14 @@ Examples:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog=self.usage_text)
 
-        # Add uninstall and restart actions
+        # Add uninstall, restart, and test actions
         group = parser.add_mutually_exclusive_group()
         group.add_argument('--uninstall', action='store_true',
                           help='Uninstall gRPCServerCLI and remove all related files')
         group.add_argument('--restart', action='store_true',
                           help='Restart the gRPCServerCLI service')
+        group.add_argument('action', nargs='?', choices=['test'],
+                          help='Action to perform (test: check if server is running)')
 
         # Installer arguments
         parser.add_argument('-m', '--model-path',
@@ -280,15 +290,15 @@ Examples:
         """Get the download URL for the latest macOS release"""
         print("Checking for latest release...")
         try:
-            # Get the tags page
+            # Get the latest release
             req = urllib.request.Request(self.GITHUB_API_URL, headers={'Accept': 'application/json'})
             with urllib.request.urlopen(req) as response:
-                tags = json.loads(response.read().decode())
-                if tags:
-                    latest_tag = tags[0]['name']  # First tag is the latest
+                release = json.loads(response.read().decode())
+                if release and 'tag_name' in release:
+                    latest_tag = release['tag_name']
                     print(f"Found latest version: {latest_tag}")
                     return f"https://github.com/drawthingsai/draw-things-community/releases/download/{latest_tag}/{self.BINARY_NAME}-macOS"
-                raise ValueError("No tags found")
+                raise ValueError("No release found")
         except Exception as e:
             print(f"Failed to get latest version: {e}")
             print("Falling back to hardcoded latest known version...")
@@ -620,11 +630,24 @@ Examples:
         finally:
             sock.close()
 
-    def install(self):
-        """Run the installation process"""
-        try:
-            self.parse_args()
+    def run(self):
+        args = self.parse_args()
 
+        # Handle test
+        if args.action == 'test':
+            if is_server_running(port=args.port):
+                print("Server is running and responding!")
+                sys.exit(0)
+            else:
+                print("Could not connect to server")
+                sys.exit(1)
+
+        # If no arguments provided, show usage
+        if len(sys.argv) == 1:
+            print(self.usage_text)
+            sys.exit(0)
+
+        try:
             # Validate port availability
             if not self.check_port_available(self.server_args['port']):
                 print(f"\nError: Port {self.server_args['port']} is already in use!")
@@ -727,7 +750,7 @@ Examples:
 def main():
     """Main entry point for the CLI."""
     installer = DTSServerInstaller()
-    installer.install()
+    installer.run()
 
 if __name__ == "__main__":
     main()
