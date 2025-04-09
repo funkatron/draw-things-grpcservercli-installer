@@ -9,13 +9,17 @@ from contextlib import contextmanager
 src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
 sys.path.insert(0, src_dir)
 
-from image_generation_pb2 import (
+from dts_util.grpc.proto.image_generation_pb2 import (
     EchoRequest,
+    EchoResponse,
     FilesExistRequest,
+    FilesExistResponse,
     ImageGenerationRequest,
-    UploadFileRequest
+    ImageGenerationResponse,
+    UploadFileRequest,
+    UploadFileResponse,
 )
-from image_generation_pb2_grpc import ImageGenerationServiceStub
+from dts_util.grpc.proto.image_generation_pb2_grpc import ImageGenerationServiceStub
 
 def is_server_running(host='localhost', port=50051, timeout=1):
     """Check if the gRPC server is running."""

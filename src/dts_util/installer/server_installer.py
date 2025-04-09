@@ -13,8 +13,9 @@ import time
 import socket
 from subprocess import PIPE
 import json
+from ..grpc.utils import is_server_running, handle_grpc_error
 
-class DrawThingsInstaller:
+class DTSServerInstaller:
     # Default server settings
     DEFAULT_PORT = 7859
     DEFAULT_HOST = '0.0.0.0'
@@ -723,6 +724,10 @@ Examples:
         print("\nUninstall complete!")
         print("Note: Model directory was not removed.")
 
-if __name__ == "__main__":
-    installer = DrawThingsInstaller()
+def main():
+    """Main entry point for the CLI."""
+    installer = DTSServerInstaller()
     installer.install()
+
+if __name__ == "__main__":
+    main()

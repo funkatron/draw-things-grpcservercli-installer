@@ -1,216 +1,117 @@
-# Draw Things gRPCServer CLI Installer
+# Draw Things gRPC Server Utilities
 
-A Python-based installer and manager for the Draw Things Community gRPCServer on macOS. This tool manages the installation and configuration of the gRPCServer binary, enabling distributed AI image generation.
+A Python package providing utilities for interacting with the Draw Things gRPC server. This package includes tools for server installation, management, and client communication.
 
 ## Features
 
-- 🚀 One-command installation of gRPCServer binary
-- 🔄 Automatic service management via LaunchAgent (startup, crash recovery)
-- ⚙️ Command-line configuration of all gRPCServer options
-- 🔧 Easy service management (start/stop/restart)
+- Server installation and configuration
+- gRPC client utilities for image generation
+- File management tools
+- Health check endpoints
+- TLS encryption support
+- Authentication via shared secrets
 
-## Requirements
+## Installation
 
-- macOS 15 or later
-- Python 3.9 or later
-- Python packages (auto-installed):
-  - grpcio ≥ 1.54.2
-  - grpcio-reflection ≥ 1.54.2
-  - grpcio-tools ≥ 1.54.2
-  - protobuf ≥ 4.23.1
-  - pytest ≥ 7.0.0 (for development)
-
-## Quick Start
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git
-   cd draw-things-grpcservercli-installer
-   ```
-
-2. Install with default settings:
-   ```bash
-   ./src/grpc_server_installer.py
-   ```
-
-### Example Installation Output
-
-```
-~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/grpc_server_installer.py
-Checking for existing services...
-
-Found running gRPC processes:
-  - 45475 /Users/<username>/bin/gRPCServerCLI-macOS /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models --model-browser --port=7590
-
-Found existing Draw Things gRPC installation!
-It's recommended to uninstall before proceeding.
-Would you like to uninstall now? (Y/n): y
-Uninstalling gRPCServerCLI...
-
-Uninstall complete!
-Note: Model directory was not removed.
-
-Continuing with fresh installation...
-
-
-Downloading gRPCServerCLI...
-Checking for latest release...
-Found latest version: v1.20250403.2
-Cannot write to /usr/local/bin, using /Users/<username>/.local/bin instead
-Service installed and started at /Users/<username>/Library/LaunchAgents/com.drawthings.grpcserver.plist
-Server configuration:
-
-Waiting for service to start...
-
-Testing gRPCServerCLI...
-Found gRPCServerCLI process (PID: 44328)
-Server is listening on port 7859
-
-Installation completed successfully!
-Models directory: /Users/<username>/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
-Binary location: /Users/<username>/.local/bin/gRPCServerCLI
-
-The gRPCServerCLI service is running and will start automatically on login.
-You can manage it with these commands:
-    launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-    launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-```
-
-## Installation Options
-
-### Common Usage
+Install directly from the repository:
 
 ```bash
-# Custom model directory
-./src/grpc_server_installer.py -m /path/to/models
-
-# Custom port and server name
-./src/grpc_server_installer.py -p 7860 -n "MyServer"
-
-# Enable security (recommended)
-./src/grpc_server_installer.py -s "your-secret-key"
-
-# Enable model browser
-./src/grpc_server_installer.py --model-browser
-
-# Silent installation
-./src/grpc_server_installer.py -q
+git clone https://github.com/yourusername/draw-things-grpcserver-utilities.git
+cd draw-things-grpcserver-utilities
+pip install -e .
 ```
 
-### Configuration Options
+## Package Structure
 
-#### Installer Settings
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-m, --model-path` | Model directory location | Draw Things app models directory |
-| `-q, --quiet` | Silent installation | False |
-| `--uninstall` | Remove installation | - |
-| `--restart` | Restart service | - |
+```
+src/
+├── dts_util/
+│   ├── __init__.py
+│   ├── installer/
+│   │   ├── __init__.py
+│   │   └── server_installer.py
+│   ├── grpc/
+│   │   ├── __init__.py
+│   │   ├── utils.py
+│   │   └── proto/
+│   │       ├── __init__.py
+│   │       ├── image_generation.proto
+│   │       ├── image_generation_pb2.py
+│   │       └── image_generation_pb2_grpc.py
+│   └── utils/
+│       ├── __init__.py
+│       └── common.py
+```
 
-#### Server Settings
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-n, --name` | Network server name | Machine name |
-| `-p, --port` | Server port | 7859 |
-| `-a, --address` | Network address | 0.0.0.0 |
-| `-g, --gpu` | GPU device index | 0 |
-| `-s, --shared-secret` | Authentication key | None |
-| `-d, --datadog-api-key` | Monitoring API key | None |
-| `--no-tls` | Disable encryption | False |
-| `--no-response-compression` | Disable compression | False |
-| `--model-browser` | Enable model browser | False |
-| `--no-flash-attention` | Disable Flash Attention | False |
-| `--debug` | Verbose logging | False |
+## Usage
 
-## Advanced Configuration
+### Server Installation
 
-### Distributed Setup
-
-Use `--join` for distributed configurations:
+Install the Draw Things gRPC server:
 
 ```bash
-./src/grpc_server_installer.py --join '{
-  "host": "proxy.example.com",
-  "port": 7859,
-  "servers": [
-    {
-      "address": "gpu1.local",
-      "port": 7859,
-      "priority": 1
-    }
-  ]
-}'
+dts-util install
 ```
 
-Required fields:
-- `host`: Proxy server address
-- `port`: Proxy server port
+### Client Usage
 
-Optional fields:
-- `servers`: GPU server list
-  - `address`: Server address
-  - `port`: Server port
-  - `priority`: Server priority (1=high, 2=low)
+```python
+from dts_util.grpc.utils import create_channel_and_stub, handle_grpc_error
+from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
 
-## Service Management
+# Create a channel and stub
+channel, stub = create_channel_and_stub(
+    host='localhost',
+    port=50051,
+    use_tls=True,
+    shared_secret='your-secret'
+)
 
-The installer creates a LaunchAgent (`com.drawthings.grpcserver`) that:
-- Starts on user login
-- Auto-restarts after crashes
-- Can be managed via standard `launchctl` commands
-
-```bash
-# Stop service
-launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-
-# Start service
-launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
-
-# Restart service
-./src/grpc_server_installer.py --restart
+# Make RPC calls with error handling
+with handle_grpc_error():
+    response = stub.GenerateImage(GenerateImageRequest(
+        prompt="a beautiful landscape",
+        negative_prompt="",
+        width=512,
+        height=512
+    ))
 ```
 
-## API Endpoints
+### Server Health Check
 
-- `Echo`: Health check
-- `FilesExist`: Model file verification
-- `GenerateImage`: Image generation
-- `UploadFile`: Model file upload
+```python
+from dts_util.grpc.utils import is_server_running
 
-See [API.md](API.md) and [PROTOBUF.md](PROTOBUF.md) for detailed documentation.
-
-## Debugging
-
-Enable detailed logging:
-```bash
-./src/grpc_server_installer.py --debug
+if is_server_running(port=50051):
+    print("Server is running!")
+else:
+    print("Server is not available")
 ```
+
+## Documentation
+
+- [API Documentation](API.md): Detailed API reference
+- [Protocol Buffer Specifications](PROTOBUF.md): gRPC service and message definitions
 
 ## Development
 
-Run tests:
-```bash
-pytest tests/
-```
+### Requirements
 
-### Project Structure
-```
-.
-├── src/                    # Core source code
-│   ├── grpc_server_installer.py  # Installer script
-│   ├── image_generation.proto    # API definitions
-│   └── grpc-test.py             # Test client
-├── tests/                 # Test suite
-├── utils/                 # Utilities
-├── API.md                # API docs
-└── PROTOBUF.md           # Protocol docs
+- Python 3.8+
+- gRPC tools
+- Protocol Buffers compiler
+
+### Running Tests
+
+```bash
+pip install -e ".[dev]"  # Install development dependencies
+pytest tests/
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Contributing
 
-- [Draw Things](https://drawthings.ai/) - Main application
-- [Draw Things Community](https://github.com/drawthingsai/draw-things-community) - Community tools
+Contributions are welcome! Please feel free to submit a Pull Request.

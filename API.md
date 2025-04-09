@@ -1,155 +1,129 @@
-# Draw Things gRPC Server API Documentation
+# Draw Things gRPC Server API
 
-## Overview
+This document describes the gRPC API endpoints provided by the Draw Things gRPC server. These endpoints can be managed using the `dts-util` tool.
 
-The Draw Things gRPC server provides a service for image generation and model management. It's implemented as a standalone CLI tool (`gRPCServerCLI`) that interfaces with the Draw Things app's model directory.
+## Service Definition
 
-## Server Configuration
+The service is defined in `src/dts_util/grpc/proto/image_generation.proto`.
 
-### Binary Location
-- **CLI Tool**: `~/.local/bin/gRPCServerCLI` or `/usr/local/bin/gRPCServerCLI`
-- **Default Settings**:
-  - Port: 7859
-  - Host: 0.0.0.0
-  - TLS: Enabled by default
-  - Service Name: `com.drawthings.grpcserver`
+## Endpoints
 
-### Model Directory
-Default location (macOS):
-```
-~/Library/Containers/com.liuliu.draw-things/Data/Documents/Models
-```
+### Echo
 
-Required model files:
-- `stable-diffusion/model.safetensors`: Main Stable Diffusion model
-- `vae/model.safetensors`: VAE model for image encoding/decoding
+Health check endpoint that returns a simple response.
 
-## API Endpoints
-
-### 1. Echo
-Health check endpoint to verify server connectivity.
-
-**Request**: Empty message
 ```protobuf
+rpc Echo(EchoRequest) returns (EchoResponse);
+
 message EchoRequest {
 }
-```
 
-**Response**: Returns "HELLO"
-```protobuf
 message EchoResponse {
-  string message = 1;
+    string message = 1;
 }
 ```
 
-### 2. FilesExist
-Verifies existence of model files in the server's model directory.
+### FilesExist
 
-**Request**:
+Check if model files exist in the server's model directory.
+
 ```protobuf
+rpc FilesExist(FilesExistRequest) returns (FilesExistResponse);
+
 message FilesExistRequest {
-  repeated string files = 1;  // List of files to check
+    repeated string files = 1;
 }
-```
 
-**Response**:
-```protobuf
 message FilesExistResponse {
-  repeated string files = 1;   // List of checked files
-  repeated bool exists = 2;    // Existence status for each file
-  repeated string errors = 3;  // Error messages if any
+    repeated string files = 1;
+    repeated bool exists = 2;
+    repeated string errors = 3;
 }
 ```
 
-### 3. GenerateImage
-Main endpoint for image generation.
+### GenerateImage
 
-**Request**:
+Generate images based on provided parameters.
+
 ```protobuf
+rpc GenerateImage(ImageGenerationRequest) returns (ImageGenerationResponse);
+
 message ImageGenerationRequest {
-  string prompt = 1;              // Generation prompt
-  string negative_prompt = 2;     // Negative prompt
-  int32 width = 3;               // Image width
-  int32 height = 4;              // Image height
-  int32 steps = 5;               // Number of steps
-  float cfg_scale = 6;           // CFG scale
-  int64 seed = 7;                // Random seed
-  string sampler = 8;            // Sampler name
-  bool restore_faces = 9;        // Face restoration
-  bool enable_hr = 10;           // High-res fix
-  float denoising_strength = 11; // Denoising strength
-  int32 batch_size = 12;         // Images per batch
-  int32 batch_count = 13;        // Number of batches
+    string prompt = 1;
+    string negative_prompt = 2;
+    int32 width = 3;
+    int32 height = 4;
+    int32 steps = 5;
+    float cfg_scale = 6;
+    int64 seed = 7;
+    string sampler = 8;
+    bool restore_faces = 9;
+    bool enable_hr = 10;
+    float denoising_strength = 11;
+    int32 batch_size = 12;
+    int32 batch_count = 13;
 }
-```
 
-**Response**:
-```protobuf
 message ImageGenerationResponse {
-  repeated bytes images = 1;           // Generated images (PNG format)
-  repeated string info = 2;            // Generation parameters
-  repeated SignpostEvent events = 3;   // Progress events
+    repeated bytes images = 1;
+    string info = 2;
+    repeated string events = 3;
 }
 ```
 
-### 4. UploadFile
-Endpoint for uploading model files to the server.
+### UploadFile
 
-**Request** (streaming):
+Upload model files to the server.
+
 ```protobuf
+rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+
 message UploadFileRequest {
-  string filename = 1;      // Target filename
-  bytes chunk_data = 2;     // File data chunk
+    string filename = 1;
+    bytes data = 2;
 }
-```
 
-**Response**:
-```protobuf
 message UploadFileResponse {
-  bool success = 1;         // Upload status
-  string message = 2;       // Status/error message
+    string message = 1;
 }
 ```
 
-## Progress Events
+## Using the API
 
-Generation progress is tracked via SignpostEvents:
+The API can be accessed using any gRPC client. The server can be managed using the `dts-util` command-line tool:
 
-```protobuf
-message SignpostEvent {
-  string name = 1;          // Event description
-  int64 timestamp = 2;      // Milliseconds since epoch
-  enum EventType {
-    TEXT_ENCODED = 0;
-    IMAGE_DECODED = 1;
-    IMAGE_ENCODED = 2;
-    SAMPLING = 3;
-    FACE_RESTORED = 4;
-    IMAGE_UPSCALED = 5;
-    SECOND_PASS_IMAGE_DECODED = 6;
-    SECOND_PASS_IMAGE_ENCODED = 7;
-    SECOND_PASS_SAMPLING = 8;
-  }
-  EventType type = 3;
-}
+```bash
+# Install the server
+dts-util install
+
+# Check server status
+dts-util test
+
+# Uninstall the server
+dts-util uninstall
 ```
 
-## Error Handling
-
-- Uses standard gRPC status codes for transport errors
-- Application errors are included in response messages
-- Common status codes:
-  - `OK`: Success
-  - `INVALID_ARGUMENT`: Invalid request parameters
-  - `NOT_FOUND`: Model file not found
-  - `INTERNAL`: Server processing error
-  - `UNIMPLEMENTED`: Method not supported
+For more details on server management, see the [README.md](README.md).
 
 ## Security
 
-- TLS encryption enabled by default
-- Optional shared secret authentication
-- Server binds to all interfaces (0.0.0.0)
-- Response compression enabled by default
+- By default, the server uses TLS encryption
+- Authentication can be enabled using the `--shared-secret` option
+- The server only accepts connections from localhost by default
 
-For detailed protocol buffer specifications, see [PROTOBUF.md](PROTOBUF.md).
+## Error Handling
+
+The server uses standard gRPC error codes:
+
+- `UNAVAILABLE`: Server is not running or not accessible
+- `INVALID_ARGUMENT`: Invalid request parameters
+- `NOT_FOUND`: Requested resource not found
+- `INTERNAL`: Server error during processing
+
+## Monitoring
+
+The server supports Datadog monitoring when configured with an API key:
+
+```bash
+dts-util install --datadog-api-key YOUR_API_KEY
+```

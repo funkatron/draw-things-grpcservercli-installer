@@ -1,5 +1,5 @@
 import pytest
-from src.grpc_utils import is_server_running
+from dts_util.grpc.utils import is_server_running, handle_grpc_error
 
 def test_is_server_running_nonexistent():
     """Test that is_server_running returns False for non-existent server."""

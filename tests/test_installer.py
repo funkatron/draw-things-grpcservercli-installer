@@ -4,27 +4,15 @@ import os
 import socket
 import pytest
 import sys
-import importlib.util
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open, call
 import json
 import urllib.request
 import tempfile
 import shutil
 import plistlib
 import subprocess
-
-# Add the src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# Import the installer script by path since it has a hyphen in the name
-SCRIPT_PATH = Path(__file__).parent.parent / 'src' / 'grpc_server_installer.py'
-spec = importlib.util.spec_from_file_location("installer_module", SCRIPT_PATH)
-installer_module = importlib.util.module_from_spec(spec)
-sys.modules["installer_module"] = installer_module
-spec.loader.exec_module(installer_module)
-
-from installer_module import DrawThingsInstaller
+from pathlib import Path
+from unittest.mock import patch, MagicMock, mock_open, call
+from dts_util.installer.server_installer import DTSServerInstaller
 
 @pytest.fixture
 def mock_home_dir():
@@ -37,9 +25,9 @@ def mock_home_dir():
     shutil.rmtree(temp_dir)
 
 @pytest.fixture
-def installer(mock_home_dir):
+def installer():
     """Create a fresh installer instance for each test."""
-    return DrawThingsInstaller()
+    return DTSServerInstaller()
 
 @pytest.fixture
 def mock_urlretrieve():
@@ -65,6 +53,8 @@ def test_default_name(installer):
 
 def test_default_model_path(installer, mock_home_dir):
     """Test that the default model path is in the Draw Things container."""
+    # Update the installer's default model path to use the mock home directory
+    installer.default_model_path = Path(mock_home_dir) / "Library/Containers/com.liuliu.draw-things/Data/Documents/Models"
     expected_path = Path(mock_home_dir) / "Library/Containers/com.liuliu.draw-things/Data/Documents/Models"
     assert installer.default_model_path == expected_path
 

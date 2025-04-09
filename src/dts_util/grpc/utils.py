@@ -1,4 +1,8 @@
-"""Utility functions for working with the Draw Things gRPC server."""
+"""Utility functions for working with the Draw Things gRPC server.
+
+This module provides helper functions for interacting with the Draw Things gRPC server.
+It can be used both by the dts-util tool and by client applications.
+"""
 
 import grpc
 from contextlib import contextmanager
@@ -8,12 +12,17 @@ def is_server_running(host: str = 'localhost', port: int = 50051, timeout: float
     """Check if the gRPC server is running.
 
     Args:
-        host: Server hostname
-        port: Server port
-        timeout: Connection timeout in seconds
+        host: Server hostname (default: localhost)
+        port: Server port (default: 50051)
+        timeout: Connection timeout in seconds (default: 1)
 
     Returns:
         bool: True if server is running and accepting connections
+
+    Example:
+        >>> from dts_util.grpc.utils import is_server_running
+        >>> is_server_running(port=7859)
+        True
     """
     try:
         with grpc.insecure_channel(f'{host}:{port}') as channel:
@@ -29,8 +38,17 @@ def is_server_running(host: str = 'localhost', port: int = 50051, timeout: float
 def handle_grpc_error():
     """Context manager to handle gRPC errors gracefully.
 
+    This context manager converts gRPC connection errors into more user-friendly
+    ConnectionError exceptions, while preserving other gRPC errors.
+
     Raises:
-        grpc.RpcError: If a non-connection related error occurs
+        ConnectionError: If the server is unavailable
+        grpc.RpcError: If any other gRPC error occurs
+
+    Example:
+        >>> from dts_util.grpc.utils import handle_grpc_error
+        >>> with handle_grpc_error():
+        ...     response = stub.GenerateImage(request)
     """
     try:
         yield
@@ -45,7 +63,7 @@ def handle_grpc_error():
 
 # Only import these if you need to create a channel with the specific service stub
 try:
-    from image_generation_pb2_grpc import ImageGenerationServiceStub
+    from .proto.image_generation_pb2_grpc import ImageGenerationServiceStub
 
     def create_channel_and_stub(
         host: str = 'localhost',
@@ -55,10 +73,13 @@ try:
     ) -> Tuple[grpc.Channel, ImageGenerationServiceStub]:
         """Create a gRPC channel and stub for communicating with the server.
 
+        This function creates a gRPC channel with the appropriate security settings
+        and returns both the channel and a stub for making RPC calls.
+
         Args:
-            host: Server hostname
-            port: Server port
-            use_tls: Whether to use TLS encryption
+            host: Server hostname (default: localhost)
+            port: Server port (default: 50051)
+            use_tls: Whether to use TLS encryption (default: True)
             shared_secret: Optional shared secret for authentication
 
         Returns:
@@ -68,6 +89,11 @@ try:
 
         Raises:
             ConnectionError: If server is not running
+
+        Example:
+            >>> from dts_util.grpc.utils import create_channel_and_stub
+            >>> channel, stub = create_channel_and_stub(port=7859)
+            >>> response = stub.Echo(EchoRequest())
         """
         # Build channel options
         options = []
