@@ -42,25 +42,26 @@ A Python package providing utilities for interacting with the Draw Things gRPC s
 
 ## Installation
 
-To install the package, follow these steps:
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/draw-things-grpcserver-utilities.git
-cd draw-things-grpcserver-utilities
-```
+# Clone the repository
+git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git
+cd draw-things-grpcservercli-installer
 
-2. Create and activate a virtual environment (recommended):
-```bash
+# Create and activate a virtual environment
 python -m venv venv
 source venv/bin/activate  # On macOS/Linux
 # or
 .\venv\Scripts\activate  # On Windows
+
+# Install the package
+pip install .
 ```
 
-3. Install the package in development mode:
+Note: Always activate the virtual environment before using dts-util commands:
 ```bash
-pip install -e .
+source venv/bin/activate  # On macOS/Linux
+# or
+.\venv\Scripts\activate  # On Windows
 ```
 
 ## Getting Started
@@ -85,13 +86,8 @@ dts-util test
 from dts_util.grpc.utils import create_channel_and_stub, handle_grpc_error
 from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
 
-# Connect to the server
-channel, stub = create_channel_and_stub(
-    host='localhost',      # The server is running on your local machine
-    port=7859,            # Default port
-    use_tls=False,        # Disable TLS for local development
-    shared_secret=''      # No shared secret needed for local development
-)
+# Connect to the server (defaults to localhost:7859, no TLS)
+channel, stub = create_channel_and_stub(port=7859)
 
 # Generate an image
 with handle_grpc_error():
@@ -161,9 +157,10 @@ dts-util test
 dts-util test --port 7860
 ```
 
-3. Verify TLS settings:
+3. Check TLS configuration:
 ```bash
-dts-util test --tls
+# If using TLS, ensure your client is configured correctly
+# You can verify server configuration in ~/.config/draw-things/server.conf
 ```
 
 ## Advanced Usage
@@ -186,10 +183,10 @@ For advanced users, here are all available installation options:
 
 ```bash
 # Basic settings
-dts-util install --port 7860 --gpu 1 --model-path /path/to/model
+dts-util install --port 7860 --model-path /path/to/model
 
 # Security settings
-dts-util install --shared-secret secret --no-tls
+dts-util install --shared-secret "your-secret-here"
 
 # Advanced settings
 dts-util install --model-browser --debug --no-flash-attention
@@ -204,11 +201,7 @@ from dts_util.grpc.utils import create_channel_and_stub, handle_grpc_error
 from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
 
 # Connect to server
-channel, stub = create_channel_and_stub(
-    host='localhost',
-    port=7859,
-    use_tls=False
-)
+channel, stub = create_channel_and_stub(port=7859)
 
 # Generate image
 with handle_grpc_error():
