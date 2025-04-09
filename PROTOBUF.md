@@ -134,6 +134,12 @@ dts-util install --port 7860
 
 # Check server status
 dts-util test
+
+# Restart the server
+dts-util restart
+
+# Uninstall the server
+dts-util uninstall
 ```
 
 For more details on server management, see the [README.md](README.md).
