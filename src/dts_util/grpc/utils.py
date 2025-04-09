@@ -53,13 +53,9 @@ def handle_grpc_error():
     try:
         yield
     except grpc.RpcError as e:
-        if isinstance(e, grpc._channel._InactiveRpcError):
-            if e.code() == grpc.StatusCode.UNAVAILABLE:
-                raise ConnectionError("Server is unavailable")
-            else:
-                raise
-        else:
-            raise
+        if hasattr(e, 'code') and e.code() == grpc.StatusCode.UNAVAILABLE:
+            raise ConnectionError("Server is unavailable")
+        raise
 
 # Only import these if you need to create a channel with the specific service stub
 try:
