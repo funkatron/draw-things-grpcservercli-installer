@@ -253,6 +253,8 @@ Examples:
             'join': args.join
         }
 
+        return args
+
     def get_default_model_path(self):
         """Return the default model path if it exists, otherwise prompt user"""
         if self.default_model_path.exists():
