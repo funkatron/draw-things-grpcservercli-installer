@@ -59,8 +59,8 @@ This script installs the Draw Things gRPCServerCLI and sets it up as a LaunchAge
 
 Usage:
     dts-util install [-m MODEL_PATH] [gRPCServerCLI options]
-    dts-util --uninstall
-    dts-util --restart
+    dts-util uninstall
+    dts-util restart
     dts-util test [--port PORT]
 
 The installer will:
@@ -68,14 +68,16 @@ The installer will:
 2. Install it to {self.PREFERRED_BIN_DIR} (or {self.LOCAL_BIN_DIR} if {self.PREFERRED_BIN_DIR} is not writable)
 3. Create and start a LaunchAgent service
 
+Commands:
+    install               Install the gRPCServerCLI
+    uninstall            Uninstall gRPCServerCLI and remove all related files
+    restart             Restart the gRPCServerCLI service
+    test                Test if the server is running and responding
+
 Installer Options:
-    install               Install the gRPCServerCLI (required for installation)
     -m, --model-path     Custom path to store models (default: Draw Things app models directory)
     -h, --help          Show this help message
-    --uninstall        Uninstall gRPCServerCLI and remove all related files
-    --restart         Restart the gRPCServerCLI service
     -q, --quiet        Minimize output and assume default answers to prompts
-    test              Test if the server is running and responding
 
 gRPCServerCLI Options:
     -n, --name             Server name in local network (default: machine name)
@@ -124,7 +126,7 @@ Examples:
     dts-util install --join '{{"host":"proxy.local", "port":7859}}'
 
     # Restart the service
-    dts-util --restart
+    dts-util restart
 
     # Test server connection
     dts-util test
@@ -176,14 +178,9 @@ Examples:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog=self.usage_text)
 
-        # Add uninstall, restart, and test actions
-        group = parser.add_mutually_exclusive_group()
-        group.add_argument('--uninstall', action='store_true',
-                          help='Uninstall gRPCServerCLI and remove all related files')
-        group.add_argument('--restart', action='store_true',
-                          help='Restart the gRPCServerCLI service')
-        group.add_argument('action', nargs='?', choices=['test'],
-                          help='Action to perform (test: check if server is running)')
+        # Add actions as positional arguments
+        parser.add_argument('action', nargs='?', choices=['install', 'uninstall', 'restart', 'test'],
+                          help='Action to perform (install: install server, uninstall: remove server, restart: restart server, test: check if server is running)')
 
         # Installer arguments
         parser.add_argument('-m', '--model-path',
@@ -220,15 +217,24 @@ Examples:
 
         args = parser.parse_args()
 
-        # Handle restart
-        if args.restart:
+        # Handle restart action
+        if args.action == 'restart':
             self.restart_service()
             sys.exit(0)
 
-        # Handle uninstall
-        if args.uninstall:
+        # Handle uninstall action
+        if args.action == 'uninstall':
             self.uninstall()
             sys.exit(0)
+
+        # Handle test action (moved from run method to here for consistency)
+        if args.action == 'test':
+            if is_server_running(port=args.port):
+                print("Server is running and responding!")
+                sys.exit(0)
+            else:
+                print("Could not connect to server")
+                sys.exit(1)
 
         self.quiet = args.quiet
         self.model_path = Path(args.model_path) if args.model_path else self.get_default_model_path()
@@ -634,66 +640,70 @@ Examples:
     def run(self):
         args = self.parse_args()
 
-        # Handle test
-        if args.action == 'test':
-            if is_server_running(port=args.port):
-                print("Server is running and responding!")
-                sys.exit(0)
-            else:
-                print("Could not connect to server")
-                sys.exit(1)
-
         # If no arguments provided, show usage
         if len(sys.argv) == 1:
             print(self.usage_text)
             sys.exit(0)
 
-        try:
-            # Validate port availability
-            if not self.check_port_available(self.server_args['port']):
-                print(f"\nError: Port {self.server_args['port']} is already in use!")
-                try:
-                    lsof = subprocess.run(['lsof', '-i', f":{self.server_args['port']}"],
-                                       stdout=PIPE, text=True, check=True)
-                    print("\nProcess using the port:")
-                    print(lsof.stdout)
-                except subprocess.CalledProcessError:
-                    pass
+        # At this point, only the 'install' action should reach here
+        # All other actions (uninstall, restart, test) are handled in parse_args()
+        if args.action == 'install':
+            try:
+                # Validate port availability
+                if not self.check_port_available(self.server_args['port']):
+                    print(f"\nError: Port {self.server_args['port']} is already in use!")
+                    try:
+                        lsof = subprocess.run(['lsof', '-i', f":{self.server_args['port']}"],
+                                           stdout=PIPE, text=True, check=True)
+                        print("\nProcess using the port:")
+                        print(lsof.stdout)
+                    except subprocess.CalledProcessError:
+                        pass
+                    sys.exit(1)
+
+                # Check for existing services before proceeding
+                self.check_existing_service()
+
+                binary_path = self.download_grpcserver()
+                self.create_launchd_service(binary_path)
+
+                # Wait a moment for the service to start
+                print("\nWaiting for service to start...")
+                time.sleep(2)
+
+                # Test if server is running
+                if self.test_server_running():
+                    print("\nInstallation completed successfully!")
+                    print(f"Models directory: {self.model_path}")
+                    print(f"Binary location: {binary_path}")
+                    print("\nThe gRPCServerCLI service is running and will start automatically on login.")
+                    print("You can manage it with these commands:")
+                    print(f"    launchctl unload ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
+                    print(f"    launchctl load ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
+                else:
+                    print("\nWARNING: Installation completed but server may not be running correctly.")
+                    print("Try these troubleshooting steps:")
+                    print("1. Check the system log for errors:")
+                    print("    log show --predicate 'process == \"gRPCServerCLI\"' --last 5m")
+                    print("2. Restart the service:")
+                    print(f"    launchctl unload ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
+                    print(f"    launchctl load ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
+                    print("3. Check if the models directory is accessible:")
+                    print(f"    ls {self.model_path}")
+            except Exception as e:
+                print(f"Installation failed: {e}")
+                print("\nFor usage information, run:")
+                print(f"    {sys.argv[0]} --help")
                 sys.exit(1)
-
-            # Check for existing services before proceeding
-            self.check_existing_service()
-
-            binary_path = self.download_grpcserver()
-            self.create_launchd_service(binary_path)
-
-            # Wait a moment for the service to start
-            print("\nWaiting for service to start...")
-            time.sleep(2)
-
-            # Test if server is running
-            if self.test_server_running():
-                print("\nInstallation completed successfully!")
-                print(f"Models directory: {self.model_path}")
-                print(f"Binary location: {binary_path}")
-                print("\nThe gRPCServerCLI service is running and will start automatically on login.")
-                print("You can manage it with these commands:")
-                print(f"    launchctl unload ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
-                print(f"    launchctl load ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
-            else:
-                print("\nWARNING: Installation completed but server may not be running correctly.")
-                print("Try these troubleshooting steps:")
-                print("1. Check the system log for errors:")
-                print("    log show --predicate 'process == \"gRPCServerCLI\"' --last 5m")
-                print("2. Restart the service:")
-                print(f"    launchctl unload ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
-                print(f"    launchctl load ~/Library/LaunchAgents/{self.SERVICE_NAME}.plist")
-                print("3. Check if the models directory is accessible:")
-                print(f"    ls {self.model_path}")
-        except Exception as e:
-            print(f"Installation failed: {e}")
-            print("\nFor usage information, run:")
-            print(f"    {sys.argv[0]} --help")
+        elif args.action is None:
+            # No action specified
+            print("No action specified.")
+            print(self.usage_text)
+            sys.exit(1)
+        else:
+            # This should never happen since parse_args() handles all actions
+            print(f"Unknown action: {args.action}")
+            print(self.usage_text)
             sys.exit(1)
 
     def uninstall(self):
