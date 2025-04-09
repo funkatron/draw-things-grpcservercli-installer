@@ -18,7 +18,7 @@ import subprocess
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import the installer script by path since it has a hyphen in the name
-SCRIPT_PATH = Path(__file__).parent.parent / 'src' / 'install-gRPCServerCLI.py'
+SCRIPT_PATH = Path(__file__).parent.parent / 'src' / 'grpc_server_installer.py'
 spec = importlib.util.spec_from_file_location("installer_module", SCRIPT_PATH)
 installer_module = importlib.util.module_from_spec(spec)
 sys.modules["installer_module"] = installer_module

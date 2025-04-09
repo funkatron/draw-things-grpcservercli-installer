@@ -98,10 +98,10 @@ def generate_release_notes(version: str, changes: dict) -> str:
         "git clone https://github.com/funkatron/draw-things-grpcservercli-installer.git",
         "",
         "# Make the script executable",
-        "chmod +x install-grpcservercli.py",
+        "chmod +x grpc_server_installer.py",
         "",
         "# Run the installer",
-        "./install-grpcservercli.py",
+        "./grpc_server_installer.py",
         "```",
         ""
     ])
@@ -163,6 +163,13 @@ def main():
     print(f"\nCreating release {version_str}...")
     create_github_release(version_str, release_notes)
     print(f"\nRelease {version_str} created successfully!")
+
+    # Make installer executable and test it
+    commands = [
+        "chmod +x grpc_server_installer.py",
+        "python3 -m pytest tests/",
+        "./grpc_server_installer.py",
+    ]
 
 if __name__ == '__main__':
     main()

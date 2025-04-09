@@ -30,13 +30,13 @@ A Python-based installer and manager for the Draw Things Community gRPCServer on
 
 2. Install with default settings:
    ```bash
-   ./src/install-gRPCServerCLI.py
+   ./src/grpc_server_installer.py
    ```
 
 ### Example Installation Output
 
 ```
-~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/install-gRPCServerCLI.py
+~/src/draw-things-grpcservercli-installer on main ● λ python3 ./src/grpc_server_installer.py
 Checking for existing services...
 
 Found running gRPC processes:
@@ -82,19 +82,19 @@ You can manage it with these commands:
 
 ```bash
 # Custom model directory
-./src/install-gRPCServerCLI.py -m /path/to/models
+./src/grpc_server_installer.py -m /path/to/models
 
 # Custom port and server name
-./src/install-gRPCServerCLI.py -p 7860 -n "MyServer"
+./src/grpc_server_installer.py -p 7860 -n "MyServer"
 
 # Enable security (recommended)
-./src/install-gRPCServerCLI.py -s "your-secret-key"
+./src/grpc_server_installer.py -s "your-secret-key"
 
 # Enable model browser
-./src/install-gRPCServerCLI.py --model-browser
+./src/grpc_server_installer.py --model-browser
 
 # Silent installation
-./src/install-gRPCServerCLI.py -q
+./src/grpc_server_installer.py -q
 ```
 
 ### Configuration Options
@@ -129,7 +129,7 @@ You can manage it with these commands:
 Use `--join` for distributed configurations:
 
 ```bash
-./src/install-gRPCServerCLI.py --join '{
+./src/grpc_server_installer.py --join '{
   "host": "proxy.example.com",
   "port": 7859,
   "servers": [
@@ -167,7 +167,7 @@ launchctl unload ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
 launchctl load ~/Library/LaunchAgents/com.drawthings.grpcserver.plist
 
 # Restart service
-./src/install-gRPCServerCLI.py --restart
+./src/grpc_server_installer.py --restart
 ```
 
 ## API Endpoints
@@ -183,7 +183,7 @@ See [API.md](API.md) and [PROTOBUF.md](PROTOBUF.md) for detailed documentation.
 
 Enable detailed logging:
 ```bash
-./src/install-gRPCServerCLI.py --debug
+./src/grpc_server_installer.py --debug
 ```
 
 ## Development
@@ -197,7 +197,7 @@ pytest tests/
 ```
 .
 ├── src/                    # Core source code
-│   ├── install-gRPCServerCLI.py  # Installer script
+│   ├── grpc_server_installer.py  # Installer script
 │   ├── image_generation.proto    # API definitions
 │   └── grpc-test.py             # Test client
 ├── tests/                 # Test suite
