@@ -20,6 +20,13 @@ A Python package providing utilities for interacting with the Draw Things gRPC s
   - Authentication setup
   - Certificate management
 
+### What This Package Does _Not_ Provide
+
+- **Image Generation Logic**: The actual image generation is handled by the Draw Things gRPC server
+- **Model Management**: Model loading and management is handled by the server
+- **GPU Management**: GPU configuration is handled by the server
+- **Web Interface**: This is a command-line and programmatic interface only
+- **Endpoint Management**: The gRPC server's endpoints are fixed and cannot be modified through this tool
 
 ## Features
 
@@ -68,17 +75,12 @@ If you're new to the Draw Things gRPC server, here's a simple guide to get you s
 dts-util install
 ```
 
-2. **Start the Server**:
-```bash
-dts-util start
-```
-
-3. **Verify the Server is Running**:
+2. **Verify the Server is Running**:
 ```bash
 dts-util test
 ```
 
-4. **Generate Your First Image**:
+3. **Generate Your First Image**:
 ```python
 from dts_util.grpc.utils import create_channel_and_stub, handle_grpc_error
 from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
@@ -86,7 +88,7 @@ from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
 # Connect to the server
 channel, stub = create_channel_and_stub(
     host='localhost',      # The server is running on your local machine
-    port=50051,           # Default port
+    port=7859,            # Default port
     use_tls=False,        # Disable TLS for local development
     shared_secret=''      # No shared secret needed for local development
 )
@@ -111,11 +113,17 @@ If you need to customize the server installation:
 # Install on a specific port and GPU
 dts-util install --port 7860 --gpu 1
 
-# Install with a custom model
+# Install with a custom model path
 dts-util install --model-path /path/to/your/model
 
-# Install with logging enabled
-dts-util install --log-file /path/to/logfile.log
+# Install with security options
+dts-util install --shared-secret your-secret-here
+
+# Install with model browser enabled
+dts-util install --model-browser
+
+# Install with debug logging
+dts-util install --debug
 ```
 
 #### Managing the Server
@@ -124,16 +132,13 @@ Basic server management commands:
 
 ```bash
 # Check if the server is running
-dts-util status
-
-# View server logs
-dts-util logs
-
-# Stop the server
-dts-util stop
+dts-util test
 
 # Restart the server
-dts-util restart
+dts-util install --restart
+
+# Uninstall the server
+dts-util install --uninstall
 ```
 
 #### Secure Setup (Production)
@@ -143,9 +148,8 @@ For a secure production setup:
 ```bash
 # Install with TLS and authentication
 dts-util install \
-    --tls-cert /path/to/cert.pem \
-    --tls-key /path/to/key.pem \
-    --shared-secret your-secret-here
+    --shared-secret your-secret-here \
+    --no-tls  # Only use this in trusted networks!
 ```
 
 Then connect securely from your Python code:
@@ -153,7 +157,7 @@ Then connect securely from your Python code:
 ```python
 channel, stub = create_channel_and_stub(
     host='your-server.com',
-    port=50051,
+    port=7859,
     use_tls=True,
     shared_secret='your-secret-here'
 )
@@ -164,12 +168,14 @@ channel, stub = create_channel_and_stub(
 Common issues and solutions:
 
 1. **Server Won't Start**
-   - Check if the port is already in use: `dts-util status`
-   - Check logs: `dts-util logs`
+   - Check if the port is already in use
+   - Check system logs for errors
+   - Verify GPU availability
 
 2. **Connection Errors**
    - Verify server is running: `dts-util test`
    - Check firewall settings
+   - Verify TLS settings if using encryption
 
 3. **Image Generation Fails**
    - Check server logs for errors
@@ -200,10 +206,10 @@ For advanced users, here are all available installation options:
 dts-util install --port 7860 --gpu 1 --model-path /path/to/model
 
 # Security settings
-dts-util install --tls-cert cert.pem --tls-key key.pem --shared-secret secret
+dts-util install --shared-secret secret --no-tls
 
 # Advanced settings
-dts-util install --work-dir /path/to/workdir --log-file /path/to/logfile
+dts-util install --model-browser --debug --no-flash-attention
 ```
 
 ### Python Client Examples
@@ -217,7 +223,7 @@ from dts_util.grpc.proto.image_generation_pb2 import GenerateImageRequest
 # Connect to server
 channel, stub = create_channel_and_stub(
     host='localhost',
-    port=50051,
+    port=7859,
     use_tls=False
 )
 
@@ -275,6 +281,19 @@ pytest tests/
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+### [Unreleased]
+
+#### Added
+- Comprehensive test suite for gRPC utilities
+  - Server availability checking
+  - Error handling for various gRPC scenarios
+  - Channel creation with different configurations
+- Improved error handling in `handle_grpc_error`
+  - Simplified error code checking
+  - Better handling of missing code() methods
 
 ## Contributing
 
