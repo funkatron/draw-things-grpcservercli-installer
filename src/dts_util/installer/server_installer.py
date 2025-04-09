@@ -58,7 +58,7 @@ Draw Things gRPCServerCLI Installer
 This script installs the Draw Things gRPCServerCLI and sets it up as a LaunchAgent service.
 
 Usage:
-    dts-util [-m MODEL_PATH] [gRPCServerCLI options]
+    dts-util install [-m MODEL_PATH] [gRPCServerCLI options]
     dts-util --uninstall
     dts-util --restart
     dts-util test [--port PORT]
@@ -69,12 +69,13 @@ The installer will:
 3. Create and start a LaunchAgent service
 
 Installer Options:
-    -m, --model-path         Custom path to store models (default: Draw Things app models directory)
-    -h, --help              Show this help message
-    --uninstall            Uninstall gRPCServerCLI and remove all related files
-    --restart             Restart the gRPCServerCLI service
-    -q, --quiet            Minimize output and assume default answers to prompts
-    test                  Test if the server is running and responding
+    install               Install the gRPCServerCLI (required for installation)
+    -m, --model-path     Custom path to store models (default: Draw Things app models directory)
+    -h, --help          Show this help message
+    --uninstall        Uninstall gRPCServerCLI and remove all related files
+    --restart         Restart the gRPCServerCLI service
+    -q, --quiet        Minimize output and assume default answers to prompts
+    test              Test if the server is running and responding
 
 gRPCServerCLI Options:
     -n, --name             Server name in local network (default: machine name)
@@ -105,22 +106,22 @@ Advanced Options:
 
 Examples:
     # Install using default settings
-    dts-util
+    dts-util install
 
     # Install with custom model path
-    dts-util -m /path/to/models
+    dts-util install -m /path/to/models
 
     # Install with custom port and server name
-    dts-util -p 7860 -n "MyServer"
+    dts-util install -p 7860 -n "MyServer"
 
     # Install with security options (recommended for public networks)
-    dts-util -s "mysecret"
+    dts-util install -s "mysecret"
 
     # Install with model browser enabled
-    dts-util --model-browser
+    dts-util install --model-browser
 
     # Install with proxy configuration
-    dts-util --join '{{"host":"proxy.local", "port":7859}}'
+    dts-util install --join '{{"host":"proxy.local", "port":7859}}'
 
     # Restart the service
     dts-util --restart
@@ -132,7 +133,7 @@ Examples:
     dts-util test --port 7859
 
     # Quiet install with defaults
-    dts-util -q
+    dts-util install -q
 """
 
     def validate_join_config(self, join_config_str):
